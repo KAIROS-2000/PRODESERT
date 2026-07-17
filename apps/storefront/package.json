@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@pro-dessert/contracts": "*",
     "@hookform/resolvers": "^5.2.2",
     "lucide-react": "^0.468.0",
     "next": "^16.0.0",

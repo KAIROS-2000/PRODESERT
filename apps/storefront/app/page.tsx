@@ -1,15 +1,13 @@
 import {
-  BadgeCheck,
-  Box,
   CheckCircle2,
   Clock3,
   MapPinned,
   PackageCheck,
   SearchCheck,
-  ShoppingBasket,
   Sparkles,
   Warehouse,
 } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 
 const benefits = [
@@ -37,6 +35,33 @@ const steps = [
   'Заберите собранный заказ после уведомления о готовности.',
 ] as const;
 
+const featuredCategories = [
+  {
+    href: '/catalog/ingredients',
+    title: 'Ингредиенты',
+    text: 'Желирующие агенты, пасты, сиропы и профессиональные смеси.',
+    image: '/images/catalog/pro-ingredients.webp',
+  },
+  {
+    href: '/catalog/chocolate-cocoa',
+    title: 'Шоколад и какао',
+    text: 'Кувертюр, какао-продукты и точные фасовки для производства.',
+    image: '/images/catalog/chocolate-couverture.webp',
+  },
+  {
+    href: '/catalog/molds',
+    title: 'Формы и молды',
+    text: 'Силиконовые формы, кольца и инвентарь для стабильного результата.',
+    image: '/images/catalog/molds-tools.webp',
+  },
+  {
+    href: '/catalog/packaging',
+    title: 'Упаковка',
+    text: 'Коробки, подложки и расходные материалы для аккуратной выдачи.',
+    image: '/images/catalog/pastry-packaging.webp',
+  },
+] as const;
+
 export default function HomePage() {
   return (
     <>
@@ -56,29 +81,59 @@ export default function HomePage() {
               Оформите заказ онлайн и заберите его в магазине на Липовой улице, 20.
             </p>
             <div className="hero-actions">
-              <Link className="button button--primary" href="/register">
-                Создать профиль
+              <Link className="button button--primary" href="/catalog">
+                Открыть каталог
               </Link>
-              <Link className="button button--secondary" href="/#how-it-works">
-                Как это работает
+              <Link className="button button--secondary" href="/search">
+                Найти товар
               </Link>
             </div>
           </div>
 
-          <div className="hero-visual" aria-label="Профессиональные товары Pro Dessert">
-            <div className="visual-card visual-card--main">
-              <ShoppingBasket aria-hidden="true" size={34} />
-              <span>Ингредиенты</span>
-              <strong>для точного результата</strong>
+          <figure className="hero-visual">
+            <Image
+              alt="Ингредиенты, упаковка и профессиональный инвентарь для кондитеров"
+              fill
+              priority
+              sizes="(max-width: 900px) 100vw, 44vw"
+              src="/images/catalog/pro-dessert-hero.webp"
+            />
+            <figcaption>
+              <strong>Всё для точного результата</strong>
+              <span>Профессиональный ассортимент · Оренбург</span>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section className="category-preview" aria-labelledby="category-preview-title">
+        <div className="shell">
+          <div className="section-heading section-heading--split">
+            <div>
+              <span className="eyebrow">Быстрый вход в ассортимент</span>
+              <h2 id="category-preview-title">Категории для профессиональной работы</h2>
             </div>
-            <div className="visual-card visual-card--top">
-              <Box aria-hidden="true" size={28} />
-              <span>Упаковка</span>
-            </div>
-            <div className="visual-card visual-card--bottom">
-              <BadgeCheck aria-hidden="true" size={28} />
-              <span>Инвентарь</span>
-            </div>
+            <Link className="text-link" href="/catalog">
+              Все категории <span aria-hidden="true">→</span>
+            </Link>
+          </div>
+          <div className="category-preview__grid">
+            {featuredCategories.map((category) => (
+              <Link className="category-preview__card" href={category.href} key={category.href}>
+                <span className="category-preview__image">
+                  <Image
+                    alt=""
+                    fill
+                    sizes="(max-width: 600px) 100vw, (max-width: 1000px) 50vw, 25vw"
+                    src={category.image}
+                  />
+                </span>
+                <span className="category-preview__copy">
+                  <strong>{category.title}</strong>
+                  <span>{category.text}</span>
+                </span>
+              </Link>
+            ))}
           </div>
         </div>
       </section>

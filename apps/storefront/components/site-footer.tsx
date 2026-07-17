@@ -21,6 +21,9 @@ export function SiteFooter() {
           <h2 className="footer-title">Покупателям</h2>
           <ul className="footer-links">
             <li>
+              <Link href="/catalog">Каталог</Link>
+            </li>
+            <li>
               <Link href="/#how-it-works">Как оформить заказ</Link>
             </li>
             <li>

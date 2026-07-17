@@ -1,9 +1,11 @@
 import { MapPin, Menu, UserRound } from 'lucide-react';
 import Link from 'next/link';
 
+import { SearchAutocomplete } from '@/components/catalog/search-autocomplete';
+
 const navigation = [
+  { href: '/catalog', label: 'Каталог' },
   { href: '/#about', label: 'О магазине' },
-  { href: '/#how-it-works', label: 'Как оформить' },
   { href: '/#pickup', label: 'Самовывоз' },
 ] as const;
 
@@ -26,6 +28,8 @@ export function SiteHeader() {
             <small>товары для кондитеров</small>
           </span>
         </Link>
+
+        <SearchAutocomplete compact />
 
         <nav className="desktop-nav" aria-label="Основная навигация">
           {navigation.map((item) => (

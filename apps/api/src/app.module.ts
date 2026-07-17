@@ -4,6 +4,7 @@ import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
+import { CatalogModule } from './catalog/catalog.module';
 import { CommonModule } from './common/common.module';
 import { validateEnvironment } from './common/config/environment';
 import { RequestLoggingInterceptor } from './common/logging/request-logging.interceptor';
@@ -27,6 +28,7 @@ import { RbacModule } from './rbac/rbac.module';
     AuditModule,
     HealthModule,
     AuthModule,
+    CatalogModule,
     RbacModule,
   ],
   providers: [
