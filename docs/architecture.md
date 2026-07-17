@@ -46,27 +46,27 @@ flowchart LR
 
 Внутри модуля направление зависимостей: `transport → application/use cases → domain → ports → infrastructure adapters`. Контроллеры не содержат бизнес-правил. Модуль не читает таблицы другого модуля напрямую: только application API, порт или доменное событие.
 
-| Модуль | Ответственность |
-|---|---|
-| `IdentityModule` | users, Argon2id, verification/reset tokens, server sessions, roles, 2FA |
-| `CustomerModule` | профили, организации, привязка гостевых заказов |
-| `CatalogModule` | продукты, варианты, бренды, категории, атрибуты, web-контент |
-| `SearchModule` | PostgreSQL FTS, `pg_trgm`, синонимы, подсказки |
-| `PricingModule` | проекция цен 1С, скидки, ценовые снимки |
-| `InventoryModule` | проекция складских остатков и available-to-promise |
-| `PromotionModule` | акции и области применения в границах ownership |
-| `CartModule` | guest/user cart, merge, серверная перепроверка |
-| `CheckoutModule` | контакты, согласия, только `PICKUP`/`BANK_TRANSFER` |
-| `OrderModule` | заказ, снимки строк, state machine, timeline, повтор заказа |
-| `ReservationModule` | подтверждённые резервы, TTL, продление и освобождение |
-| `PaymentModule` | реквизиты, счета, payment proof, ручная проверка |
-| `FileModule` | quarantine/scan, S3 metadata и signed URLs |
-| `ContentModule` | страницы, баннеры, SEO, web-изображения |
-| `NotificationModule` | transactional email и журнал отправок |
-| `OneCIntegrationModule` | canonical DTO, REST/CommerceML/mock adapters, sync/reconcile |
-| `OutboxModule` | атомарные события и at-least-once delivery |
-| `AuditModule` | неизменяемый журнал значимых действий |
-| `SettingsModule` | типизированные настройки, но не секреты |
+| Модуль                  | Ответственность                                                         |
+| ----------------------- | ----------------------------------------------------------------------- |
+| `IdentityModule`        | users, Argon2id, verification/reset tokens, server sessions, roles, 2FA |
+| `CustomerModule`        | профили, организации, привязка гостевых заказов                         |
+| `CatalogModule`         | продукты, варианты, бренды, категории, атрибуты, web-контент            |
+| `SearchModule`          | PostgreSQL FTS, `pg_trgm`, синонимы, подсказки                          |
+| `PricingModule`         | проекция цен 1С, скидки, ценовые снимки                                 |
+| `InventoryModule`       | проекция складских остатков и available-to-promise                      |
+| `PromotionModule`       | акции и области применения в границах ownership                         |
+| `CartModule`            | guest/user cart, merge, серверная перепроверка                          |
+| `CheckoutModule`        | контакты, согласия, только `PICKUP`/`BANK_TRANSFER`                     |
+| `OrderModule`           | заказ, снимки строк, state machine, timeline, повтор заказа             |
+| `ReservationModule`     | подтверждённые резервы, TTL, продление и освобождение                   |
+| `PaymentModule`         | реквизиты, счета, payment proof, ручная проверка                        |
+| `FileModule`            | quarantine/scan, S3 metadata и signed URLs                              |
+| `ContentModule`         | страницы, баннеры, SEO, web-изображения                                 |
+| `NotificationModule`    | transactional email и журнал отправок                                   |
+| `OneCIntegrationModule` | canonical DTO, REST/CommerceML/mock adapters, sync/reconcile            |
+| `OutboxModule`          | атомарные события и at-least-once delivery                              |
+| `AuditModule`           | неизменяемый журнал значимых действий                                   |
+| `SettingsModule`        | типизированные настройки, но не секреты                                 |
 
 Административные endpoints — фасад над use cases этих модулей, а не параллельная бизнес-логика.
 

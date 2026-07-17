@@ -1,0 +1,193 @@
+name: pro-dessert
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pro_dessert}
+      POSTGRES_USER: ${POSTGRES_USER:-pro_dessert}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-55432}:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infrastructure/docker/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    networks: [pro-dessert]
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory-policy', 'noeviction']
+    ports:
+      - '127.0.0.1:6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks: [pro-dessert]
+
+  minio:
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-pro-dessert-local}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-local-development-only}
+    ports:
+      - '127.0.0.1:9000:9000'
+      - '127.0.0.1:9001:9001'
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [pro-dessert]
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-04-16T18-13-26Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"
+        mc mb --ignore-existing "local/$${S3_BUCKET}"
+        mc anonymous set none "local/$${S3_BUCKET}"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-pro-dessert-local}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-local-development-only}
+      S3_BUCKET: ${S3_BUCKET:-pro-dessert}
+    networks: [pro-dessert]
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:1025:1025'
+      - '127.0.0.1:8025:8025'
+    networks: [pro-dessert]
+
+  migrate:
+    profiles: [full]
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    restart: 'no'
+    command: ['npx', 'prisma', 'migrate', 'deploy', '--schema', 'prisma/schema.prisma']
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pro_dessert}:${POSTGRES_PASSWORD:-local-development-only}@postgres:5432/${POSTGRES_DB:-pro_dessert}?schema=public
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [pro-dessert]
+
+  api:
+    profiles: [full]
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PORT: 4000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pro_dessert}:${POSTGRES_PASSWORD:-local-development-only}@postgres:5432/${POSTGRES_DB:-pro_dessert}?schema=public
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: http://minio:9000
+      SMTP_HOST: mailpit
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - '127.0.0.1:4000:4000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:4000/api/v1/health/live').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks: [pro-dessert]
+
+  storefront:
+    profiles: [full]
+    build:
+      context: .
+      dockerfile: infrastructure/docker/next.Dockerfile
+      args:
+        APP_NAME: storefront
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      NEXT_PUBLIC_API_BASE_URL: /api/v1
+      API_INTERNAL_URL: http://api:4000
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [pro-dessert]
+
+  admin:
+    profiles: [full]
+    build:
+      context: .
+      dockerfile: infrastructure/docker/next.Dockerfile
+      args:
+        APP_NAME: admin
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      NEXT_PUBLIC_API_BASE_URL: /api/v1
+      API_INTERNAL_URL: http://api:4000
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [pro-dessert]
+
+  nginx:
+    profiles: [full]
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    volumes:
+      - ./infrastructure/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - '127.0.0.1:8080:80'
+    depends_on:
+      - storefront
+      - admin
+      - api
+    networks: [pro-dessert]
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
+
+networks:
+  pro-dessert:
+    driver: bridge

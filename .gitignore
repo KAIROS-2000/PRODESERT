@@ -1,0 +1,37 @@
+# dependencies
+node_modules/
+.pnp.*
+
+# builds and caches
+.next/
+dist/
+coverage/
+.turbo/
+*.tsbuildinfo
+
+# runtime data
+uploads/
+backups/
+tmp/
+*.pid
+*.log
+
+# local environment and secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# test artifacts
+playwright-report/
+test-results/
+blob-report/
+
+# editors and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# generated Prisma artifacts
+apps/api/src/generated/

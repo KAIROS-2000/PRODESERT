@@ -1,0 +1,15 @@
+{
+  "name": "@pro-dessert/tsconfig",
+  "version": "0.0.0",
+  "private": true,
+  "files": [
+    "base.json",
+    "next.json",
+    "nest.json"
+  ],
+  "exports": {
+    "./base.json": "./base.json",
+    "./next.json": "./next.json",
+    "./nest.json": "./nest.json"
+  }
+}

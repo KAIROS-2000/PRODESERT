@@ -1,0 +1,42 @@
+{
+  "name": "pro-dessert",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "npm@11.7.0",
+  "description": "Pro Dessert — интернет-магазин товаров для кондитеров с самовывозом",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "overrides": {
+    "next": {
+      "postcss": "8.5.10"
+    },
+    "postcss": "8.5.10"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "test:ci": "turbo test -- --runInBand",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "npm run prisma:generate --workspace=@pro-dessert/api",
+    "db:migrate": "npm run prisma:migrate:deploy --workspace=@pro-dessert/api",
+    "db:migrate:dev": "npm run prisma:migrate:dev --workspace=@pro-dessert/api",
+    "db:seed": "npm run prisma:seed --workspace=@pro-dessert/api",
+    "compose:up": "docker compose up -d --build",
+    "compose:down": "docker compose down",
+    "compose:logs": "docker compose logs -f"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.8",
+    "typescript": "^5.9.3"
+  }
+}

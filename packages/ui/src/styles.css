@@ -1,0 +1,263 @@
+:root {
+  --pd-accent: #8f3045;
+  --pd-accent-hover: #772539;
+  --pd-text: #231f20;
+  --pd-muted: #6f6567;
+  --pd-border: #d9d1ce;
+  --pd-surface: #ffffff;
+  --pd-soft: #f7f3f0;
+  --pd-danger: #a61b2b;
+  --pd-focus: 0 0 0 3px rgb(143 48 69 / 22%);
+  --pd-radius-sm: 0.5rem;
+  --pd-radius-md: 0.75rem;
+}
+
+.pd-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.pd-button {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  border: 1px solid transparent;
+  border-radius: var(--pd-radius-md);
+  font: inherit;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.pd-button:focus-visible,
+.pd-input:focus-visible,
+.pd-checkbox:focus-visible {
+  outline: none;
+  box-shadow: var(--pd-focus);
+}
+
+.pd-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.pd-button--primary {
+  color: #fff;
+  background: var(--pd-accent);
+}
+
+.pd-button--primary:hover:not(:disabled) {
+  background: var(--pd-accent-hover);
+}
+
+.pd-button--secondary {
+  color: var(--pd-text);
+  border-color: var(--pd-border);
+  background: var(--pd-surface);
+}
+
+.pd-button--secondary:hover:not(:disabled),
+.pd-button--ghost:hover:not(:disabled) {
+  background: var(--pd-soft);
+}
+
+.pd-button--ghost {
+  color: var(--pd-text);
+  background: transparent;
+}
+
+.pd-button--danger {
+  color: #fff;
+  background: var(--pd-danger);
+}
+
+.pd-button--danger:hover:not(:disabled) {
+  background: #841521;
+}
+
+.pd-button--sm {
+  min-height: 2.5rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+}
+
+.pd-button--md {
+  padding: 0.75rem 1.125rem;
+  font-size: 1rem;
+}
+
+.pd-button--lg {
+  min-height: 3rem;
+  padding: 0.875rem 1.375rem;
+  font-size: 1rem;
+}
+
+.pd-button--full {
+  width: 100%;
+}
+
+.pd-spinner-wrap {
+  display: inline-flex;
+  align-items: center;
+}
+
+.pd-spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  flex: none;
+  border: 2px solid currentcolor;
+  border-right-color: transparent;
+  border-radius: 999px;
+  animation: pd-spin 700ms linear infinite;
+}
+
+.pd-field,
+.pd-checkbox-field {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.pd-field__label {
+  color: var(--pd-text);
+  font-size: 0.9375rem;
+  font-weight: 650;
+}
+
+.pd-input {
+  width: 100%;
+  min-height: 2.75rem;
+  box-sizing: border-box;
+  border: 1px solid var(--pd-border);
+  border-radius: var(--pd-radius-sm);
+  padding: 0.6875rem 0.8125rem;
+  color: var(--pd-text);
+  background: var(--pd-surface);
+  font: inherit;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.pd-input::placeholder {
+  color: #8c8284;
+}
+
+.pd-input:hover:not(:disabled) {
+  border-color: #aa9c98;
+}
+
+.pd-input:disabled {
+  color: var(--pd-muted);
+  background: var(--pd-soft);
+  cursor: not-allowed;
+}
+
+.pd-input--error {
+  border-color: var(--pd-danger);
+}
+
+.pd-field__hint,
+.pd-form-error {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.pd-field__hint {
+  color: var(--pd-muted);
+}
+
+.pd-form-error {
+  color: var(--pd-danger);
+}
+
+.pd-checkbox-field__label {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  color: var(--pd-text);
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.pd-checkbox {
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: none;
+  margin: 0.0625rem 0 0;
+  border-radius: 0.3rem;
+  accent-color: var(--pd-accent);
+}
+
+.pd-checkbox:disabled,
+.pd-checkbox:disabled + span {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.pd-checkbox-field__message {
+  margin-left: 1.875rem;
+}
+
+.pd-badge {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.pd-badge--neutral {
+  color: #51484a;
+  background: #eee9e6;
+}
+.pd-badge--info {
+  color: #174b72;
+  background: #e3f1fb;
+}
+.pd-badge--success {
+  color: #24613c;
+  background: #e5f5ea;
+}
+.pd-badge--warning {
+  color: #6c4b0b;
+  background: #fff1ce;
+}
+.pd-badge--danger {
+  color: #7b1522;
+  background: #fbe5e8;
+}
+
+@keyframes pd-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pd-button,
+  .pd-input {
+    transition: none;
+  }
+  .pd-spinner {
+    animation-duration: 1.5s;
+  }
+}

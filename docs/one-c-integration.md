@@ -25,7 +25,7 @@
 Бизнес-логика использует только этот интерфейс. Форматы конкретной 1С изолированы внутри адаптера.
 
 ```ts
-export type OneCAdapterKind = "mock" | "commerceml2" | "rest";
+export type OneCAdapterKind = 'mock' | 'commerceml2' | 'rest';
 
 export interface ExchangeCursor {
   value: string | null;
@@ -103,9 +103,7 @@ export interface OneCAdapter {
   "correlationId": "0190f3ad-f47a-7e0c-8505-3daf412e71ff",
   "status": "ACCEPTED",
   "receivedAt": "2026-07-18T06:30:01Z",
-  "results": [
-    { "externalId": "a1473c1f-1e3f-11ef-9a8d-00155d010101", "status": "APPLIED" }
-  ]
+  "results": [{ "externalId": "a1473c1f-1e3f-11ef-9a8d-00155d010101", "status": "APPLIED" }]
 }
 ```
 
@@ -136,7 +134,11 @@ export interface OneCAdapter {
     { "code": "COCOA_PERCENT", "name": "Содержание какао", "value": "54.5", "unit": "%" }
   ],
   "sourceImages": [
-    { "externalId": "image-184-1", "url": "https://1c.example.invalid/image/184", "sha256": "<sha256>" }
+    {
+      "externalId": "image-184-1",
+      "url": "https://1c.example.invalid/image/184",
+      "sha256": "<sha256>"
+    }
   ]
 }
 ```
@@ -386,23 +388,23 @@ Replay доступен только ADMIN, требует причины, по�
 }
 ```
 
-| Код | HTTP | Retry | Назначение |
-|---|---:|:---:|---|
-| `AUTH_REQUIRED` | 401 | нет | Нет допустимых credentials |
-| `INVALID_SIGNATURE` | 401 | нет | Ошибка HMAC или сертификата |
-| `REPLAY_DETECTED` | 409 | нет | Повтор nonce вне идемпотентного сценария |
-| `UNSUPPORTED_SCHEMA` | 400 | нет | Неподдерживаемая major-версия |
-| `VALIDATION_ERROR` | 422 | нет | Нарушена JSON Schema или доменный инвариант |
-| `IDEMPOTENCY_CONFLICT` | 409 | нет | Ключ повторён с другим payload |
-| `UNKNOWN_PRODUCT` | 422 | нет | Неизвестный UUID товара/варианта |
-| `UNKNOWN_WAREHOUSE` | 422 | нет | Неизвестный склад/точка |
-| `STALE_VERSION` | 409 | нет | Ревизия или версия старее применённой |
-| `TOTAL_MISMATCH` | 409 | нет | Не совпадают сумма или строки |
-| `INVALID_STATE_TRANSITION` | 409 | нет | Переход статуса запрещён |
-| `INSUFFICIENT_STOCK` | 409 | после новых данных | Недостаточный доступный остаток |
-| `RATE_LIMITED` | 429 | да | Превышен лимит |
-| `DEPENDENCY_UNAVAILABLE` | 503 | да | Временная недоступность зависимости |
-| `INTERNAL_ERROR` | 500 | да | Безопасная внутренняя ошибка |
+| Код                        | HTTP |       Retry        | Назначение                                  |
+| -------------------------- | ---: | :----------------: | ------------------------------------------- |
+| `AUTH_REQUIRED`            |  401 |        нет         | Нет допустимых credentials                  |
+| `INVALID_SIGNATURE`        |  401 |        нет         | Ошибка HMAC или сертификата                 |
+| `REPLAY_DETECTED`          |  409 |        нет         | Повтор nonce вне идемпотентного сценария    |
+| `UNSUPPORTED_SCHEMA`       |  400 |        нет         | Неподдерживаемая major-версия               |
+| `VALIDATION_ERROR`         |  422 |        нет         | Нарушена JSON Schema или доменный инвариант |
+| `IDEMPOTENCY_CONFLICT`     |  409 |        нет         | Ключ повторён с другим payload              |
+| `UNKNOWN_PRODUCT`          |  422 |        нет         | Неизвестный UUID товара/варианта            |
+| `UNKNOWN_WAREHOUSE`        |  422 |        нет         | Неизвестный склад/точка                     |
+| `STALE_VERSION`            |  409 |        нет         | Ревизия или версия старее применённой       |
+| `TOTAL_MISMATCH`           |  409 |        нет         | Не совпадают сумма или строки               |
+| `INVALID_STATE_TRANSITION` |  409 |        нет         | Переход статуса запрещён                    |
+| `INSUFFICIENT_STOCK`       |  409 | после новых данных | Недостаточный доступный остаток             |
+| `RATE_LIMITED`             |  429 |         да         | Превышен лимит                              |
+| `DEPENDENCY_UNAVAILABLE`   |  503 |         да         | Временная недоступность зависимости         |
+| `INTERNAL_ERROR`           |  500 |         да         | Безопасная внутренняя ошибка                |
 
 Ответ не содержит stack trace, SQL, секреты или внутренние пути. Batch может вернуть `207 Multi-Status`; успешные элементы не откатываются из-за отдельной бизнес-ошибки, если пакет не помечен атомарным.
 
