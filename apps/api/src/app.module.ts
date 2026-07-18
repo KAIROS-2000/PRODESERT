@@ -5,6 +5,8 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
+import { CartModule } from './cart/cart.module';
+import { CheckoutModule } from './checkout/checkout.module';
 import { CommonModule } from './common/common.module';
 import { validateEnvironment } from './common/config/environment';
 import { RequestLoggingInterceptor } from './common/logging/request-logging.interceptor';
@@ -29,6 +31,8 @@ import { RbacModule } from './rbac/rbac.module';
     HealthModule,
     AuthModule,
     CatalogModule,
+    CartModule,
+    CheckoutModule,
     RbacModule,
   ],
   providers: [

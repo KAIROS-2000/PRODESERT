@@ -1,11 +1,13 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
+import { CartProvider } from '@/components/cart/cart-provider';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 
 import './globals.css';
 import './catalog.css';
+import './cart.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
@@ -21,12 +23,14 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
   return (
     <html lang="ru">
       <body>
-        <a className="skip-link" href="#main-content">
-          Перейти к содержимому
-        </a>
-        <SiteHeader />
-        <main id="main-content">{children}</main>
-        <SiteFooter />
+        <CartProvider>
+          <a className="skip-link" href="#main-content">
+            Перейти к содержимому
+          </a>
+          <SiteHeader />
+          <main id="main-content">{children}</main>
+          <SiteFooter />
+        </CartProvider>
       </body>
     </html>
   );

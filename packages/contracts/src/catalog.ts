@@ -69,6 +69,12 @@ export interface CatalogProductSummary {
   readonly isHit: boolean;
   readonly isNew: boolean;
   readonly variantCount: number;
+  readonly defaultVariant: {
+    readonly id: string;
+    readonly minOrderQuantity: string;
+    readonly salesMultiple: string;
+    readonly availability: CatalogAvailability;
+  } | null;
 }
 
 export interface CatalogAttributeValue {

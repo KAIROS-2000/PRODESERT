@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { FormField, FormStatus } from '@/components/auth/form-controls';
+import { useCart } from '@/components/cart/cart-provider';
 import { getAuthErrorMessage, postAuth } from '@/lib/auth-api';
 
 const loginSchema = z.object({
@@ -19,6 +20,7 @@ type LoginValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
   const router = useRouter();
+  const { mergeCartAfterLogin } = useCart();
   const [requestError, setRequestError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const {
@@ -35,6 +37,7 @@ export function LoginForm() {
     setSuccess(false);
     try {
       await postAuth('/auth/login', values);
+      await mergeCartAfterLogin();
       setSuccess(true);
       router.replace('/');
       router.refresh();

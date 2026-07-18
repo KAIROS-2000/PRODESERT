@@ -69,6 +69,12 @@ export interface ProductSummary {
   isHit: boolean;
   isSale: boolean;
   variantCount?: number;
+  defaultVariant?: {
+    id: string;
+    minOrderQuantity: string;
+    salesMultiple: string;
+    availability: Availability;
+  } | null;
 }
 
 export interface ProductSpecification {

@@ -39,7 +39,13 @@ async function bootstrap(): Promise<void> {
   app.enableCors({
     credentials: true,
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'X-Correlation-Id', 'X-CSRF-Token'],
+    allowedHeaders: [
+      'Content-Type',
+      'X-Correlation-Id',
+      'X-CSRF-Token',
+      'Idempotency-Key',
+      'Authorization',
+    ],
     origin: (
       origin: string | undefined,
       callback: (error: Error | null, allow?: boolean) => void,

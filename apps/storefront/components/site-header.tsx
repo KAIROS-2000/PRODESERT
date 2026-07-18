@@ -1,6 +1,7 @@
 import { MapPin, Menu, UserRound } from 'lucide-react';
 import Link from 'next/link';
 
+import { CartLink } from '@/components/cart/cart-link';
 import { SearchAutocomplete } from '@/components/catalog/search-autocomplete';
 
 const navigation = [
@@ -40,6 +41,7 @@ export function SiteHeader() {
         </nav>
 
         <div className="header-actions">
+          <CartLink />
           <Link className="button button--quiet desktop-account" href="/login">
             <UserRound aria-hidden="true" size={18} />
             Войти
@@ -55,6 +57,7 @@ export function SiteHeader() {
                   {item.label}
                 </Link>
               ))}
+              <CartLink mobile />
               <Link href="/login">Войти в профиль</Link>
               <Link href="/register">Создать профиль</Link>
             </nav>

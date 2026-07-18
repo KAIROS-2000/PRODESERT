@@ -68,6 +68,9 @@ export class ApiExceptionFilter implements ExceptionFilter {
             code: typeof response.code === 'string' ? response.code : this.defaultCode(status),
             message,
             ...(Array.isArray(messageValue) ? { details: messageValue } : {}),
+            ...(!Array.isArray(messageValue) && response.details !== undefined
+              ? { details: response.details }
+              : {}),
           },
         };
       }

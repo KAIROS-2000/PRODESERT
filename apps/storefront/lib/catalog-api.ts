@@ -72,6 +72,7 @@ function normalizeSummary(product: CatalogProductSummary) {
     isHit: product.isHit,
     isSale: product.isSale,
     variantCount: product.variantCount,
+    defaultVariant: product.defaultVariant ? { ...product.defaultVariant } : null,
   };
 }
 

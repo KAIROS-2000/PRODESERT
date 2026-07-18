@@ -37,6 +37,14 @@ const environmentSchema = z
       .default('pd_csrf'),
     CSRF_TTL_SECONDS: z.coerce.number().int().min(300).max(86_400).default(7_200),
     SESSION_TTL_SECONDS: z.coerce.number().int().min(900).max(2_592_000).default(604_800),
+    CART_COOKIE_NAME: z
+      .string()
+      .regex(/^[A-Za-z0-9_-]+$/)
+      .default('pd_cart'),
+    CART_TTL_SECONDS: z.coerce.number().int().min(3_600).max(31_536_000).default(2_592_000),
+    ORDER_PUBLIC_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(3_650).default(365),
+    ORDER_ACCESS_TOKEN_SECRET: optionalNonEmptyString,
+    PICKUP_LOCATION_CODE: z.string().trim().min(1).max(64).default('orenburg-lipovaya-20'),
     EMAIL_VERIFICATION_TTL_MINUTES: z.coerce.number().int().min(10).max(10_080).default(1_440),
     PASSWORD_RESET_TTL_MINUTES: z.coerce.number().int().min(10).max(1_440).default(60),
     ARGON2_MEMORY_KIB: z.coerce.number().int().min(19_456).max(262_144).default(19_456),
@@ -97,6 +105,13 @@ const environmentSchema = z
         code: z.ZodIssueCode.custom,
         path: ['PII_HASH_SECRET'],
         message: 'PII_HASH_SECRET with at least 32 characters is required in production',
+      });
+    }
+    if (!env.ORDER_ACCESS_TOKEN_SECRET || env.ORDER_ACCESS_TOKEN_SECRET.length < 32) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['ORDER_ACCESS_TOKEN_SECRET'],
+        message: 'ORDER_ACCESS_TOKEN_SECRET with at least 32 characters is required in production',
       });
     }
   });

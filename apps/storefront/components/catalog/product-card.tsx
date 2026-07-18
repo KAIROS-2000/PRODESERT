@@ -1,6 +1,6 @@
-import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
+import { ProductCardCartControls } from '@/components/cart/product-card-cart-controls';
 import type { Availability, ProductSummary } from '@/lib/catalog-types';
 
 import { ProductImage } from './product-image';
@@ -25,8 +25,6 @@ export function ProductCard({
   product: ProductSummary;
   priority?: boolean;
 }) {
-  const unavailable = product.availability === 'OUT_OF_STOCK';
-
   return (
     <article className="product-card">
       <Link className="product-card__media" href={`/product/${product.slug}`}>
@@ -62,13 +60,12 @@ export function ProductCard({
           ) : null}
         </div>
 
-        <Link
-          className="button button--secondary product-card__more"
-          href={`/product/${product.slug}`}
-        >
-          {unavailable ? 'Подробнее' : 'Выбрать фасовку'}
-          <ArrowRight aria-hidden="true" size={16} />
-        </Link>
+        <ProductCardCartControls
+          productName={product.name}
+          productSlug={product.slug}
+          price={product.price}
+          defaultVariant={product.defaultVariant}
+        />
       </div>
     </article>
   );

@@ -24,6 +24,7 @@ import {
   normalizeCatalogQuery,
   parseAttributeFilters,
 } from './catalog-domain';
+import { selectCartRecommendationTargets } from './catalog-recommendations';
 import {
   type CatalogProductsQueryDto,
   type CatalogSuggestionsQueryDto,
@@ -344,6 +345,66 @@ export class CatalogService {
         .map((related) => this.toSummary(related.targetProduct)),
       documents: this.toDocumentLinks(product.documentLinks),
     };
+  }
+
+  async recommendationsForCart(
+    productIds: readonly string[],
+    limit = 4,
+  ): Promise<readonly CatalogProductSummary[]> {
+    const distinctProductIds = [...new Set(productIds)];
+    const safeLimit = Number.isFinite(limit) ? Math.min(4, Math.max(0, Math.floor(limit))) : 0;
+    if (distinctProductIds.length === 0 || safeLimit === 0) return [];
+
+    const now = new Date();
+    const relations = await this.prisma.relatedProduct.findMany({
+      where: {
+        sourceProductId: { in: distinctProductIds },
+        targetProductId: { notIn: distinctProductIds },
+        targetProduct: {
+          active: true,
+          variants: {
+            some: {
+              active: true,
+              prices: {
+                some: {
+                  priceType: 'RETAIL',
+                  currency: 'RUB',
+                  AND: [
+                    { OR: [{ validFrom: null }, { validFrom: { lte: now } }] },
+                    { OR: [{ validTo: null }, { validTo: { gt: now } }] },
+                  ],
+                },
+              },
+              OR: [
+                { allowBackorder: true },
+                {
+                  stockBalances: {
+                    some: {
+                      available: { gt: 0 },
+                      warehouse: {
+                        active: true,
+                        pickupLocation: { is: { active: true } },
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+      include: { targetProduct: { include: summaryInclude } },
+    });
+
+    return selectCartRecommendationTargets(relations, distinctProductIds, relations.length)
+      .map((product) => this.toSummary(product))
+      .filter(
+        (product) =>
+          product.price !== null &&
+          product.defaultVariant !== null &&
+          product.defaultVariant.availability !== 'OUT_OF_STOCK',
+      )
+      .slice(0, safeLimit);
   }
 
   async suggestions(
@@ -993,6 +1054,9 @@ export class CatalogService {
       0,
     );
     const allowBackorder = product.variants.some((variant) => variant.allowBackorder);
+    const primaryVariantAvailable = primaryVariant
+      ? primaryVariant.stockBalances.reduce((sum, stock) => sum + stock.available.toNumber(), 0)
+      : 0;
     return {
       id: product.id,
       slug: product.slug,
@@ -1016,6 +1080,17 @@ export class CatalogService {
       isHit: product.isHit,
       isNew: product.isNew,
       variantCount: product.variants.length,
+      defaultVariant: primaryVariant
+        ? {
+            id: primaryVariant.id,
+            minOrderQuantity: primaryVariant.minOrderQuantity.toFixed(),
+            salesMultiple: primaryVariant.salesMultiple.toFixed(),
+            availability: classifyAvailability(
+              primaryVariantAvailable,
+              primaryVariant.allowBackorder,
+            ),
+          }
+        : null,
     };
   }
 
