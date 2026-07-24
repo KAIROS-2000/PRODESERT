@@ -15,6 +15,7 @@ import { CsrfGuard } from './common/security/csrf.guard';
 import { HealthModule } from './health/health.module';
 import { OneCModule } from './one-c/one-c.module';
 import { OutboxModule } from './outbox/outbox.module';
+import { PaymentsModule } from './payments/payments.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { QueueModule } from './queue/queue.module';
 import { RbacModule } from './rbac/rbac.module';
@@ -41,6 +42,7 @@ import { ReservationsModule } from './reservations/reservations.module';
     CheckoutModule,
     ReservationsModule,
     OneCModule,
+    PaymentsModule,
     RbacModule,
   ],
   providers: [

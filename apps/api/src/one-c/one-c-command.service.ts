@@ -14,6 +14,7 @@ import {
   ONE_C_ADAPTER,
   type OneCAdapter,
   type OneCOrderStatusNotification,
+  type OneCReservationExtensionRequest,
   type OneCStockConfirmationReceipt,
   type OneCStockConfirmationRequest,
 } from './adapters/one-c-adapter';
@@ -36,6 +37,7 @@ const SUPPORTED_EVENTS = new Set([
   'order.created',
   'order.reservation_expired',
   'order.stock_confirmation.requested',
+  'order.reservation_extension.requested',
 ]);
 
 @Injectable()
@@ -68,6 +70,21 @@ export class OneCCommandService implements OutboxEventHandler {
       if (receipt.statusEvent) {
         await this.inbox.acceptOrderStatus(receipt.statusEvent);
       }
+      return;
+    }
+    if (event.eventType === 'order.reservation_extension.requested') {
+      const command = await this.buildReservationExtensionRequest(event, claim.orderVersion);
+      const receipt = await this.dispatch(() => this.adapter.requestReservationExtension(command));
+      await this.prisma.$transaction(
+        (transaction) =>
+          this.recordOutboundJob(transaction, event, {
+            externalEntityId: command.payload.externalOrderId,
+            sourceRevision: receipt.sourceRevision,
+            commandHash: oneCPayloadHash(command),
+          }),
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+      if (receipt.statusEvent) await this.inbox.acceptOrderStatus(receipt.statusEvent);
       return;
     }
     if (event.eventType === 'order.reservation_expired') {
@@ -261,6 +278,85 @@ export class OneCCommandService implements OutboxEventHandler {
     };
   }
 
+  private async buildReservationExtensionRequest(
+    event: OutboxEvent,
+    orderVersion?: number,
+  ): Promise<OneCReservationExtensionRequest> {
+    if (!orderVersion || !Number.isInteger(orderVersion) || orderVersion < 1) {
+      throw new IntegrationDispatchError('ONE_C_OUTBOX_CLAIM_INVALID', false);
+    }
+    const requestedExpiresAt = this.claimString(event, 'requestedExpiresAt');
+    const reason = this.claimString(event, 'reason');
+    if (Number.isNaN(Date.parse(requestedExpiresAt))) {
+      throw new IntegrationDispatchError('ONE_C_RESERVATION_EXTENSION_DEADLINE_INVALID', false);
+    }
+    const order = await this.prisma.order.findUnique({
+      where: { id: event.aggregateId },
+      include: {
+        items: { orderBy: { id: 'asc' } },
+        stockReservations: {
+          where: { status: 'ACTIVE' },
+          orderBy: { orderItemId: 'asc' },
+        },
+      },
+    });
+    if (
+      !order ||
+      !order.oneCId ||
+      order.oneCVersion === null ||
+      order.currency !== 'RUB' ||
+      !order.reservationExpiresAt
+    ) {
+      throw new IntegrationDispatchError('ONE_C_ACTIVE_RESERVATION_NOT_FOUND', false);
+    }
+    if (order.stockReservations.length !== order.items.length) {
+      throw new IntegrationDispatchError('ONE_C_RESERVATION_LINES_INCOMPLETE', false);
+    }
+    const reservationsByItem = new Map(
+      order.stockReservations.map((reservation) => [reservation.orderItemId, reservation]),
+    );
+    const externalReservationIds = new Set(
+      order.stockReservations.map((reservation) => reservation.externalReservationId),
+    );
+    if (externalReservationIds.size !== 1 || !order.stockReservations[0]?.externalReservationId) {
+      throw new IntegrationDispatchError('ONE_C_RESERVATION_IDENTITY_INVALID', false);
+    }
+    const lines = order.items.map((item) => {
+      const reservation = reservationsByItem.get(item.id);
+      if (!reservation?.sourceVersion) {
+        throw new IntegrationDispatchError('ONE_C_RESERVATION_SOURCE_VERSION_MISSING', false);
+      }
+      return {
+        externalVariantId: item.oneCVariantId,
+        quantity: item.quantity.toFixed(3),
+        confirmedUnitPrice: item.unitPrice.toFixed(2),
+        confirmedLineTotal: item.lineTotal.toFixed(2),
+        stockSourceVersion: reservation.sourceVersion,
+      };
+    });
+    return {
+      schemaVersion: '1.0',
+      messageId: event.messageId,
+      correlationId: event.correlationId,
+      idempotencyKey: event.idempotencyKey,
+      eventType: 'order.reservation_extension.requested',
+      occurredAt: event.createdAt.toISOString(),
+      payload: {
+        orderId: order.id,
+        externalOrderId: order.oneCId,
+        publicNumber: order.publicNumber,
+        orderVersion,
+        sourceOrderVersion: order.oneCVersion,
+        externalReservationId: order.stockReservations[0].externalReservationId,
+        requestedExpiresAt,
+        reason,
+        confirmedTotal: order.grandTotal.toFixed(2),
+        currency: 'RUB',
+        lines,
+      },
+    };
+  }
+
   private async recordOrderExport(
     event: OutboxEvent,
     command: OneCExportOrderCommand,
@@ -385,6 +481,19 @@ export class OneCCommandService implements OutboxEventHandler {
       orderId: event.payload.orderId,
       ...(typeof version === 'number' ? { orderVersion: version } : {}),
     };
+  }
+
+  private claimString(event: OutboxEvent, key: string): string {
+    if (
+      typeof event.payload !== 'object' ||
+      event.payload === null ||
+      Array.isArray(event.payload) ||
+      typeof event.payload[key] !== 'string' ||
+      !event.payload[key].trim()
+    ) {
+      throw new IntegrationDispatchError('ONE_C_OUTBOX_CLAIM_INVALID', false);
+    }
+    return event.payload[key];
   }
 
   private createdEventVersion(idempotencyKey: string): number {

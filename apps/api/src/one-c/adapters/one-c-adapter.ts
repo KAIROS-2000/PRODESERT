@@ -67,6 +67,41 @@ export interface OneCStockConfirmationReceipt {
   readonly statusEvent?: OneCOrderStatusEnvelopeDto;
 }
 
+export interface OneCReservationExtensionRequest {
+  readonly schemaVersion: '1.0';
+  readonly messageId: string;
+  readonly correlationId: string;
+  readonly idempotencyKey: string;
+  readonly eventType: 'order.reservation_extension.requested';
+  readonly occurredAt: string;
+  readonly payload: {
+    readonly orderId: string;
+    readonly externalOrderId: string;
+    readonly publicNumber: string;
+    readonly orderVersion: number;
+    readonly sourceOrderVersion: number;
+    readonly externalReservationId: string;
+    readonly requestedExpiresAt: string;
+    readonly reason: string;
+    readonly confirmedTotal: string;
+    readonly currency: 'RUB';
+    readonly lines: readonly {
+      readonly externalVariantId: string;
+      readonly quantity: string;
+      readonly confirmedUnitPrice: string;
+      readonly confirmedLineTotal: string;
+      readonly stockSourceVersion: string;
+    }[];
+  };
+}
+
+export interface OneCReservationExtensionReceipt {
+  readonly requestId: string;
+  readonly acceptedAt: string;
+  readonly sourceRevision: string | null;
+  readonly statusEvent?: OneCOrderStatusEnvelopeDto;
+}
+
 export interface OneCOrderStatusNotification {
   readonly schemaVersion: '1.0';
   readonly messageId: string;
@@ -120,6 +155,10 @@ export interface OneCAdapter {
     command: OneCStockConfirmationRequest,
     signal?: AbortSignal,
   ): Promise<OneCStockConfirmationReceipt>;
+  requestReservationExtension(
+    command: OneCReservationExtensionRequest,
+    signal?: AbortSignal,
+  ): Promise<OneCReservationExtensionReceipt>;
   publishOrderStatus(
     command: OneCOrderStatusNotification,
     signal?: AbortSignal,

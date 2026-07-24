@@ -5,5 +5,6 @@ export * from './catalog.js';
 export * from './checkout.js';
 export * from './integration.js';
 export * from './order.js';
+export * from './payment.js';
 export * from './reservation.js';
 export * from './session.js';

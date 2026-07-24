@@ -17,7 +17,13 @@ describe('ApplicationOutboxHandler', () => {
       order: { findUnique: jest.fn().mockResolvedValue({ reservationExpiresAt: deadline }) },
     };
     const queue = { enqueueReservationExpiry: jest.fn().mockResolvedValue(undefined) };
-    const handler = new ApplicationOutboxHandler(oneC as never, prisma as never, queue as never);
+    const notifications = { supports: jest.fn().mockReturnValue(false), handle: jest.fn() };
+    const handler = new ApplicationOutboxHandler(
+      oneC as never,
+      prisma as never,
+      queue as never,
+      notifications as never,
+    );
 
     await handler.handle(event);
 
@@ -40,7 +46,13 @@ describe('ApplicationOutboxHandler', () => {
     const queue = {
       enqueueReservationExpiry: jest.fn().mockRejectedValue(new Error('redis unavailable')),
     };
-    const handler = new ApplicationOutboxHandler(oneC as never, prisma as never, queue as never);
+    const notifications = { supports: jest.fn().mockReturnValue(false), handle: jest.fn() };
+    const handler = new ApplicationOutboxHandler(
+      oneC as never,
+      prisma as never,
+      queue as never,
+      notifications as never,
+    );
 
     await expect(handler.handle(event)).rejects.toMatchObject({
       code: 'RESERVATION_QUEUE_UNAVAILABLE',

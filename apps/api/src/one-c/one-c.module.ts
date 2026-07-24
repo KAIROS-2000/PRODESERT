@@ -3,6 +3,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { type Environment } from '../common/config/environment';
 import { PrismaModule } from '../prisma/prisma.module';
+import { PaymentsModule } from '../payments/payments.module';
 import { QueueModule } from '../queue/queue.module';
 import { ReservationsModule } from '../reservations/reservations.module';
 import { ONE_C_ADAPTER, type OneCAdapter } from './adapters/one-c-adapter';
@@ -29,7 +30,7 @@ import {
 } from './security/one-c-signature.service';
 
 @Module({
-  imports: [ConfigModule, PrismaModule, QueueModule, ReservationsModule],
+  imports: [ConfigModule, PrismaModule, QueueModule, ReservationsModule, PaymentsModule],
   controllers: [OneCController],
   providers: [
     OneCSignatureService,

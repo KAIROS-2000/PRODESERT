@@ -345,6 +345,20 @@ export class ReservationService {
             },
             ...(command.eventId ? { causationId: command.eventId } : {}),
           });
+          await this.outbox.create(tx, {
+            aggregateType: 'order',
+            aggregateId: order.id,
+            eventType: 'order.reservation_expiry_reminder',
+            idempotencyKey: `order.reservation-reminder:${order.id}:${command.expiresAt.toISOString()}`,
+            correlationId,
+            availableAt: new Date(
+              Math.max(Date.now(), command.expiresAt.getTime() - 2 * 60 * 60 * 1_000),
+            ),
+            payload: {
+              orderId: order.id,
+              reservationExpiresAt: command.expiresAt.toISOString(),
+            },
+          });
           await tx.auditLog.create({
             data: {
               action: 'STOCK_RESERVATION_CONFIRMED',

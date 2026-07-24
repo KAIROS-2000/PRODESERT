@@ -6,8 +6,9 @@ import { SearchAutocomplete } from '@/components/catalog/search-autocomplete';
 
 const navigation = [
   { href: '/catalog', label: 'Каталог' },
+  { href: '/payment', label: 'Оплата' },
   { href: '/#about', label: 'О магазине' },
-  { href: '/#pickup', label: 'Самовывоз' },
+  { href: '/pickup', label: 'Самовывоз' },
 ] as const;
 
 export function SiteHeader() {

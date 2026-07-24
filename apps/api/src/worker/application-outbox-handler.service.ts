@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { type OutboxEvent } from '@prisma/client';
 import { type OutboxEventHandler } from '../outbox/outbox-handler';
 import { IntegrationDispatchError } from '../outbox/retry-policy';
+import { OrderNotificationService } from '../notifications/order-notification.service';
 import { ONE_C_OUTBOX_HANDLER, OneCCommandService } from '../one-c/one-c-command.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
@@ -12,18 +13,27 @@ export class ApplicationOutboxHandler implements OutboxEventHandler {
     @Inject(ONE_C_OUTBOX_HANDLER) private readonly oneC: OneCCommandService,
     private readonly prisma: PrismaService,
     private readonly queue: QueueService,
+    private readonly notifications: OrderNotificationService,
   ) {}
 
   async handle(event: OutboxEvent): Promise<void> {
+    let handled = false;
     if (this.oneC.supports(event.eventType)) {
       await this.oneC.handle(event);
-      return;
+      handled = true;
     }
-    if (event.eventType === 'order.stock_confirmed') {
+    if (
+      event.eventType === 'order.stock_confirmed' ||
+      event.eventType === 'order.reservation_extended'
+    ) {
       await this.scheduleReservationExpiry(event);
-      return;
+      handled = true;
     }
-    throw new IntegrationDispatchError('OUTBOX_EVENT_UNSUPPORTED', false);
+    if (this.notifications.supports(event.eventType)) {
+      await this.notifications.handle(event);
+      handled = true;
+    }
+    if (!handled) throw new IntegrationDispatchError('OUTBOX_EVENT_UNSUPPORTED', false);
   }
 
   private async scheduleReservationExpiry(event: OutboxEvent): Promise<void> {

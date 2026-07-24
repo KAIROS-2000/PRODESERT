@@ -4,6 +4,7 @@ import { AdminOrderActionsController } from '../orders/admin-order-actions.contr
 import { OrderTransitionService } from '../orders/order-transition.service';
 import { OutboxModule } from '../outbox/outbox.module';
 import { ReservationExpiryProcessor } from './reservation-expiry.processor';
+import { ReservationExtensionService } from './reservation-extension.service';
 import { ReservationPolicyService } from './reservation-policy.service';
 import { ReservationSweeperService } from './reservation-sweeper.service';
 import { ReservationService } from './reservation.service';
@@ -17,6 +18,7 @@ import { ReservationService } from './reservation.service';
     ReservationService,
     ReservationExpiryProcessor,
     ReservationSweeperService,
+    ReservationExtensionService,
   ],
   exports: [
     OrderTransitionService,
@@ -24,6 +26,7 @@ import { ReservationService } from './reservation.service';
     ReservationService,
     ReservationExpiryProcessor,
     ReservationSweeperService,
+    ReservationExtensionService,
   ],
 })
 export class ReservationsModule {}

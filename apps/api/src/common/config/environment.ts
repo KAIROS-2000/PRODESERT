@@ -64,6 +64,71 @@ const environmentSchema = z
     SMTP_USER: optionalNonEmptyString,
     SMTP_PASSWORD: optionalNonEmptyString,
     SMTP_FROM: z.string().trim().min(3).default('Pro Dessert <no-reply@example.invalid>'),
+    EMAIL_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(5),
+    S3_ENDPOINT: z.string().url().default('http://localhost:9000'),
+    S3_REGION: z.string().trim().min(1).max(64).default('ru-central-1'),
+    S3_BUCKET: z
+      .string()
+      .trim()
+      .regex(/^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/)
+      .default('pro-dessert'),
+    S3_ACCESS_KEY: optionalNonEmptyString,
+    S3_SECRET_KEY: optionalNonEmptyString,
+    S3_FORCE_PATH_STYLE: booleanFromString(true),
+    PAYMENT_PROOF_MAX_BYTES: z.coerce
+      .number()
+      .int()
+      .min(1_024)
+      .max(20 * 1_024 * 1_024)
+      .default(8 * 1_024 * 1_024),
+    FILE_SCAN_MODE: z.enum(['local', 'clamav']).default('local'),
+    CLAMAV_HOST: optionalNonEmptyString,
+    CLAMAV_PORT: z.coerce.number().int().min(1).max(65_535).default(3310),
+    DEMO_BANK_DETAILS_ENABLED: booleanFromString(true),
+    BANK_DETAILS_VERSION: z.string().trim().min(1).max(64).default('local-demo-v1'),
+    BANK_RECIPIENT: optionalNonEmptyString,
+    BANK_INN: z.preprocess(
+      (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+      z
+        .string()
+        .trim()
+        .regex(/^(?:\d{10}|\d{12})$/)
+        .optional(),
+    ),
+    BANK_KPP: z.preprocess(
+      (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+      z
+        .string()
+        .trim()
+        .regex(/^\d{9}$/)
+        .optional(),
+    ),
+    BANK_ACCOUNT: z.preprocess(
+      (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+      z
+        .string()
+        .trim()
+        .regex(/^\d{20}$/)
+        .optional(),
+    ),
+    BANK_CORRESPONDENT_ACCOUNT: z.preprocess(
+      (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+      z
+        .string()
+        .trim()
+        .regex(/^\d{20}$/)
+        .optional(),
+    ),
+    BANK_BIC: z.preprocess(
+      (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+      z
+        .string()
+        .trim()
+        .regex(/^\d{9}$/)
+        .optional(),
+    ),
+    BANK_NAME: optionalNonEmptyString,
+    STORE_PHONE: optionalNonEmptyString,
     ONE_C_ADAPTER: z.enum(['mock', 'rest']).default('mock'),
     ONE_C_BASE_URL: optionalUrl,
     ONE_C_KEY_ID: z.string().trim().min(1).max(64).default('local-v1'),
@@ -77,6 +142,7 @@ const environmentSchema = z
     WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(50).default(4),
     DEFAULT_RESERVATION_HOURS: z.coerce.number().int().min(1).max(720).default(24),
     B2B_RESERVATION_HOURS: z.coerce.number().int().min(1).max(720).default(72),
+    B2B_RESERVATION_BUSINESS_DAYS: z.coerce.number().int().min(1).max(10).default(3),
     RESERVATION_SWEEP_INTERVAL_MS: z.coerce
       .number()
       .int()
@@ -123,6 +189,38 @@ const environmentSchema = z
         code: z.ZodIssueCode.custom,
         path: ['SMTP_HOST'],
         message: 'SMTP_HOST is required in production',
+      });
+    }
+    if (env.DEMO_BANK_DETAILS_ENABLED) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['DEMO_BANK_DETAILS_ENABLED'],
+        message: 'Demonstration bank details are forbidden in production',
+      });
+    }
+    for (const key of [
+      'BANK_RECIPIENT',
+      'BANK_INN',
+      'BANK_ACCOUNT',
+      'BANK_CORRESPONDENT_ACCOUNT',
+      'BANK_BIC',
+      'BANK_NAME',
+      'S3_ACCESS_KEY',
+      'S3_SECRET_KEY',
+    ] as const) {
+      if (!env[key]) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `${key} is required in production`,
+        });
+      }
+    }
+    if (env.FILE_SCAN_MODE !== 'clamav' || !env.CLAMAV_HOST) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['FILE_SCAN_MODE'],
+        message: 'FILE_SCAN_MODE=clamav and CLAMAV_HOST are required in production',
       });
     }
     if (!env.PII_HASH_SECRET || env.PII_HASH_SECRET.length < 32) {

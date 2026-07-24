@@ -23,6 +23,49 @@ enum PaymentMethod {
   BANK_TRANSFER
 }
 
+enum PaymentStatus {
+  PENDING
+  PROOF_UPLOADED
+  VERIFYING
+  CONFIRMED
+  REJECTED
+  REFUNDED
+}
+
+enum PaymentDocumentKind {
+  PAYMENT_PROOF
+  INVOICE
+}
+
+enum StorageStatus {
+  PENDING_UPLOAD
+  AVAILABLE
+  FAILED
+}
+
+enum FileScanStatus {
+  PENDING
+  CLEAN
+  INFECTED
+  FAILED
+  NOT_REQUIRED
+}
+
+enum EmailDeliveryStatus {
+  PENDING
+  SENDING
+  SENT
+  RETRY_SCHEDULED
+  FAILED
+  SUPPRESSED
+}
+
+enum IdempotencyRecordStatus {
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
 enum OrderStatus {
   DRAFT
   CREATED
@@ -118,6 +161,9 @@ model User {
   carts                   Cart[]
   orders                  Order[]
   orderStatusEvents       OrderStatusHistory[]
+  verifiedPayments        Payment[]                @relation("PaymentVerifier")
+  paymentDocuments        PaymentDocument[]        @relation("PaymentDocumentUploader")
+  emailLogs               EmailLog[]               @relation("EmailLogRecipient")
 
   @@map("users")
 }
@@ -648,6 +694,8 @@ model Order {
   items             OrderItem[]
   statusHistory     OrderStatusHistory[]
   stockReservations StockReservation[]
+  payment           Payment?
+  emailLogs         EmailLog[]
 
   @@unique([idempotencyScopeHash, idempotencyKey])
   @@index([customerId, createdAt])
@@ -674,6 +722,7 @@ model OrderItem {
   oldUnitPrice    Decimal? @map("old_unit_price") @db.Decimal(14, 2)
   unitDiscount    Decimal  @map("unit_discount") @db.Decimal(14, 2)
   vatRate         Decimal  @map("vat_rate") @db.Decimal(5, 2)
+  vatIncluded     Boolean  @default(true) @map("vat_included")
   quantity        Decimal  @db.Decimal(12, 3)
   lineSubtotal    Decimal  @map("line_subtotal") @db.Decimal(14, 2)
   lineDiscount    Decimal  @map("line_discount") @db.Decimal(14, 2)
@@ -691,6 +740,133 @@ model OrderItem {
   @@index([productId])
   @@index([variantId])
   @@map("order_items")
+}
+
+model Payment {
+  id                    String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId               String        @unique @map("order_id") @db.Uuid
+  status                PaymentStatus @default(PENDING)
+  amount                Decimal       @db.Decimal(14, 2)
+  currency              String        @default("RUB") @db.Char(3)
+  recipientName         String        @map("recipient_name") @db.VarChar(250)
+  recipientInn          String        @map("recipient_inn") @db.VarChar(12)
+  recipientKpp          String?       @map("recipient_kpp") @db.VarChar(9)
+  settlementAccount     String        @map("settlement_account") @db.Char(20)
+  correspondentAccount  String        @map("correspondent_account") @db.Char(20)
+  bik                   String        @db.Char(9)
+  bankName              String        @map("bank_name") @db.VarChar(250)
+  paymentPurpose        String        @map("payment_purpose") @db.VarChar(500)
+  detailsVersion        String        @map("details_version") @db.VarChar(64)
+  isDemo                Boolean       @default(false) @map("is_demo")
+  detailsPublishedAt    DateTime      @map("details_published_at") @db.Timestamptz(3)
+  paymentReference      String?       @map("payment_reference") @db.VarChar(200)
+  customerComment       String?       @map("customer_comment") @db.VarChar(2000)
+  proofSubmittedAt      DateTime?     @map("proof_submitted_at") @db.Timestamptz(3)
+  verificationStartedAt DateTime?     @map("verification_started_at") @db.Timestamptz(3)
+  confirmedAt           DateTime?     @map("confirmed_at") @db.Timestamptz(3)
+  rejectedAt            DateTime?     @map("rejected_at") @db.Timestamptz(3)
+  refundedAt            DateTime?     @map("refunded_at") @db.Timestamptz(3)
+  verifiedByUserId      String?       @map("verified_by_user_id") @db.Uuid
+  verificationSource    StatusSource? @map("verification_source")
+  rejectionComment      String?       @map("rejection_comment") @db.VarChar(2000)
+  version               Int           @default(1)
+  createdAt             DateTime      @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  order      Order             @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  verifiedBy User?             @relation("PaymentVerifier", fields: [verifiedByUserId], references: [id], onDelete: Restrict)
+  documents  PaymentDocument[]
+
+  @@index([status, createdAt])
+  @@index([verifiedByUserId, confirmedAt])
+  @@index([detailsPublishedAt])
+  @@map("payments")
+}
+
+model PaymentDocument {
+  id               String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId        String              @map("payment_id") @db.Uuid
+  kind             PaymentDocumentKind
+  objectKey        String              @unique @map("object_key") @db.VarChar(1000)
+  originalFilename String              @map("original_filename") @db.VarChar(255)
+  storedFilename   String              @map("stored_filename") @db.VarChar(255)
+  mimeType         String              @map("mime_type") @db.VarChar(100)
+  sizeBytes        BigInt              @map("size_bytes")
+  sha256           String              @db.Char(64)
+  storageStatus    StorageStatus       @default(PENDING_UPLOAD) @map("storage_status")
+  scanStatus       FileScanStatus      @default(PENDING) @map("scan_status")
+  source           StatusSource        @default(STOREFRONT)
+  uploadedByUserId String?             @map("uploaded_by_user_id") @db.Uuid
+  availableAt      DateTime?           @map("available_at") @db.Timestamptz(3)
+  scannedAt        DateTime?           @map("scanned_at") @db.Timestamptz(3)
+  failureReason    String?             @map("failure_reason") @db.VarChar(1000)
+  createdAt        DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  payment    Payment @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  uploadedBy User?   @relation("PaymentDocumentUploader", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([paymentId, kind, createdAt])
+  @@index([storageStatus, scanStatus, createdAt])
+  @@index([uploadedByUserId, createdAt])
+  @@map("payment_documents")
+}
+
+model EmailLog {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId           String?             @map("order_id") @db.Uuid
+  userId            String?             @map("user_id") @db.Uuid
+  templateCode      String              @map("template_code") @db.VarChar(80)
+  recipientMasked   String              @map("recipient_masked") @db.VarChar(320)
+  recipientHash     String              @map("recipient_hash") @db.Char(64)
+  subject           String              @db.VarChar(300)
+  status            EmailDeliveryStatus @default(PENDING)
+  attempts          Int                 @default(0)
+  providerMessageId String?             @map("provider_message_id") @db.VarChar(200)
+  idempotencyKey    String              @unique @map("idempotency_key") @db.VarChar(200)
+  correlationId     String?             @map("correlation_id") @db.VarChar(128)
+  scheduledAt       DateTime            @default(now()) @map("scheduled_at") @db.Timestamptz(3)
+  sendingStartedAt  DateTime?           @map("sending_started_at") @db.Timestamptz(3)
+  sentAt            DateTime?           @map("sent_at") @db.Timestamptz(3)
+  nextRetryAt       DateTime?           @map("next_retry_at") @db.Timestamptz(3)
+  failedAt          DateTime?           @map("failed_at") @db.Timestamptz(3)
+  lastErrorCode     String?             @map("last_error_code") @db.VarChar(120)
+  lastErrorMessage  String?             @map("last_error_message") @db.VarChar(1000)
+  createdAt         DateTime            @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime            @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  order Order? @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  user  User?  @relation("EmailLogRecipient", fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([status, nextRetryAt, scheduledAt])
+  @@index([orderId, createdAt])
+  @@index([userId, createdAt])
+  @@index([correlationId])
+  @@map("email_logs")
+}
+
+model IdempotencyRecord {
+  id             String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scopeHash      String                  @map("scope_hash") @db.Char(64)
+  operation      String                  @db.VarChar(120)
+  key            String                  @db.VarChar(128)
+  requestHash    String                  @map("request_hash") @db.Char(64)
+  status         IdempotencyRecordStatus @default(IN_PROGRESS)
+  responseStatus Int?                    @map("response_status")
+  responseBody   Json?                   @map("response_body")
+  resourceType   String?                 @map("resource_type") @db.VarChar(80)
+  resourceId     String?                 @map("resource_id") @db.VarChar(128)
+  lockedUntil    DateTime?               @map("locked_until") @db.Timestamptz(3)
+  expiresAt      DateTime                @map("expires_at") @db.Timestamptz(3)
+  completedAt    DateTime?               @map("completed_at") @db.Timestamptz(3)
+  createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime                @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@unique([scopeHash, operation, key])
+  @@index([status, lockedUntil])
+  @@index([expiresAt])
+  @@index([resourceType, resourceId])
+  @@map("idempotency_records")
 }
 
 model OrderStatusHistory {

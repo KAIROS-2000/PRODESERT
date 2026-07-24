@@ -27,7 +27,10 @@ export function SiteFooter() {
               <Link href="/#how-it-works">Как оформить заказ</Link>
             </li>
             <li>
-              <Link href="/#pickup">Самовывоз</Link>
+              <Link href="/payment">Оплата</Link>
+            </li>
+            <li>
+              <Link href="/pickup">Самовывоз</Link>
             </li>
             <li>
               <Link href="/login">Вход</Link>

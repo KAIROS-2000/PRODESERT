@@ -7,6 +7,8 @@ import {
   type OneCNormalizedItem,
   type OneCOrderStatusNotification,
   type OneCOrderStatusNotificationReceipt,
+  type OneCReservationExtensionReceipt,
+  type OneCReservationExtensionRequest,
   type OneCStockConfirmationReceipt,
   type OneCStockConfirmationRequest,
 } from './one-c-adapter';
@@ -195,6 +197,33 @@ export class RestOneCAdapter implements OneCAdapter {
   ): Promise<OneCOrderStatusNotificationReceipt> {
     const rawBody = JSON.stringify(command);
     const value = await this.request('POST', 'orders/status-events', rawBody, signal, {
+      'content-type': 'application/json; charset=utf-8',
+      'idempotency-key': command.idempotencyKey,
+      'x-correlation-id': command.correlationId,
+    });
+    if (
+      !isRecord(value) ||
+      typeof value.requestId !== 'string' ||
+      value.requestId.trim().length === 0 ||
+      typeof value.acceptedAt !== 'string' ||
+      Number.isNaN(Date.parse(value.acceptedAt)) ||
+      (value.sourceRevision !== null && typeof value.sourceRevision !== 'string')
+    ) {
+      throw new OneCAdapterRequestError('PROTOCOL', false);
+    }
+    return {
+      requestId: value.requestId,
+      acceptedAt: value.acceptedAt,
+      sourceRevision: value.sourceRevision,
+    };
+  }
+
+  async requestReservationExtension(
+    command: OneCReservationExtensionRequest,
+    signal?: AbortSignal,
+  ): Promise<OneCReservationExtensionReceipt> {
+    const rawBody = JSON.stringify(command);
+    const value = await this.request('POST', 'orders/reservation-extension', rawBody, signal, {
       'content-type': 'application/json; charset=utf-8',
       'idempotency-key': command.idempotencyKey,
       'x-correlation-id': command.correlationId,

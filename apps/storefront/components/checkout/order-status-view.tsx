@@ -13,9 +13,10 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { CheckoutApiError, getCheckoutErrorMessage, getPublicOrder } from '@/lib/checkout-api';
-import { readOrderAccessToken } from '@/lib/order-session';
+import { captureOrderAccessFromFragment, readOrderAccessToken } from '@/lib/order-session';
 
 import styles from './order-flow.module.css';
+import { PaymentPanel } from './payment-panel';
 
 const money = new Intl.NumberFormat('ru-RU', {
   style: 'currency',
@@ -91,7 +92,8 @@ export function OrderStatusView({ publicNumber }: { publicNumber: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    const accessToken = readOrderAccessToken(publicNumber);
+    const accessToken =
+      captureOrderAccessFromFragment(publicNumber) ?? readOrderAccessToken(publicNumber);
 
     void getPublicOrder(publicNumber, accessToken)
       .then((result) => {
@@ -235,19 +237,6 @@ export function OrderStatusView({ publicNumber }: { publicNumber: string }) {
           </div>
         ) : null}
 
-        {order.status === OrderStatus.AWAITING_PAYMENT ? (
-          <div className={styles.warningBox}>
-            <AlertTriangle aria-hidden="true" size={20} />
-            <span>
-              Товары зарезервированы
-              {order.reservationExpiresAt
-                ? ` до ${formatDateTime(order.reservationExpiresAt)}`
-                : ''}
-              . Реквизиты пока не опубликованы — не выполняйте перевод.
-            </span>
-          </div>
-        ) : null}
-
         {order.status === OrderStatus.RESERVATION_EXPIRED ? (
           <div className={styles.warningBox}>
             <AlertTriangle aria-hidden="true" size={20} />
@@ -256,6 +245,15 @@ export function OrderStatusView({ publicNumber }: { publicNumber: string }) {
               выполнять нельзя.
             </span>
           </div>
+        ) : null}
+
+        {order.status === OrderStatus.AWAITING_PAYMENT ||
+        order.status === OrderStatus.PAYMENT_VERIFICATION ? (
+          <PaymentPanel
+            key={order.publicNumber}
+            publicNumber={order.publicNumber}
+            onOrderChanged={retry}
+          />
         ) : null}
 
         <section className={styles.statusDetails} aria-labelledby="order-items-title">

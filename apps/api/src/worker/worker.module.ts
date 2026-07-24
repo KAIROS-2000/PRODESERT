@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { CommonModule } from '../common/common.module';
 import { validateEnvironment } from '../common/config/environment';
 import { OneCModule } from '../one-c/one-c.module';
+import { NotificationModule } from '../notifications/notification.module';
 import { OUTBOX_EVENT_HANDLER } from '../outbox/outbox-handler';
 import { OutboxModule } from '../outbox/outbox.module';
 import { OutboxProcessorService } from '../outbox/outbox-processor.service';
@@ -26,6 +27,7 @@ import { WorkerRuntimeService } from './worker-runtime.service';
     OutboxModule,
     ReservationsModule,
     OneCModule,
+    NotificationModule,
   ],
   providers: [
     ApplicationOutboxHandler,

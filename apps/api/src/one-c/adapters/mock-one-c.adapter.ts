@@ -8,6 +8,8 @@ import {
   type OneCNormalizedItem,
   type OneCOrderStatusNotification,
   type OneCOrderStatusNotificationReceipt,
+  type OneCReservationExtensionReceipt,
+  type OneCReservationExtensionRequest,
   type OneCStockConfirmationReceipt,
   type OneCStockConfirmationRequest,
 } from './one-c-adapter';
@@ -41,6 +43,13 @@ export class MockOneCAdapter implements OneCAdapter {
     {
       readonly payloadHash: string;
       readonly receipt: OneCOrderStatusNotificationReceipt;
+    }
+  >();
+  private readonly reservationExtensions = new Map<
+    string,
+    {
+      readonly payloadHash: string;
+      readonly receipt: OneCReservationExtensionReceipt;
     }
   >();
 
@@ -160,6 +169,60 @@ export class MockOneCAdapter implements OneCAdapter {
       },
     };
     this.stockConfirmations.set(command.idempotencyKey, { payloadHash, receipt });
+    return receipt;
+  }
+
+  async requestReservationExtension(
+    command: OneCReservationExtensionRequest,
+  ): Promise<OneCReservationExtensionReceipt> {
+    const payloadHash = oneCPayloadHash(command.payload);
+    const existing = this.reservationExtensions.get(command.idempotencyKey);
+    if (existing) {
+      if (existing.payloadHash !== payloadHash) throw new OneCAdapterConflictError();
+      return existing.receipt;
+    }
+    const now = this.options.now?.() ?? new Date();
+    const identityHash = createHash('sha256')
+      .update(canonicalOneCJson({ idempotencyKey: command.idempotencyKey }), 'utf8')
+      .digest('hex');
+    const sourceOrderVersion = command.payload.sourceOrderVersion + 1;
+    const receipt: OneCReservationExtensionReceipt = {
+      requestId: `mock-extension-${identityHash.slice(0, 24)}`,
+      acceptedAt: now.toISOString(),
+      sourceRevision: String(sourceOrderVersion),
+      statusEvent: {
+        schemaVersion: '1.0',
+        messageId: randomUUID(),
+        eventType: 'order.status.updated',
+        occurredAt: now.toISOString(),
+        source: 'ONE_C',
+        correlationId: command.correlationId,
+        idempotencyKey: `mock:${command.payload.externalReservationId}:extension:v${sourceOrderVersion}`,
+        sourceRevision: String(sourceOrderVersion),
+        payload: {
+          externalOrderId: command.payload.externalOrderId,
+          publicNumber: command.payload.publicNumber,
+          eventId: `mock:${command.payload.externalReservationId}:extended:${sourceOrderVersion}`,
+          orderVersion: sourceOrderVersion,
+          status: 'AWAITING_PAYMENT',
+          confirmedTotal: command.payload.confirmedTotal,
+          currency: 'RUB',
+          reservation: {
+            externalReservationId: command.payload.externalReservationId,
+            status: 'ACTIVE',
+            expiresAt: command.payload.requestedExpiresAt,
+          },
+          payment: {
+            status: 'NOT_PAID',
+            confirmedAt: null,
+            externalPaymentId: null,
+          },
+          lines: command.payload.lines.map((line) => ({ ...line })),
+          comment: `Резерв продлён mock-адаптером 1С. ${command.payload.reason}`,
+        },
+      },
+    };
+    this.reservationExtensions.set(command.idempotencyKey, { payloadHash, receipt });
     return receipt;
   }
 

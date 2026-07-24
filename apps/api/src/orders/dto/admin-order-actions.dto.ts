@@ -12,3 +12,14 @@ export class ConfirmStockRequestDto {
   @MaxLength(1000)
   reason?: string;
 }
+
+export class ExtendReservationRequestDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  expectedVersion!: number;
+
+  @IsString()
+  @MaxLength(1000)
+  reason!: string;
+}

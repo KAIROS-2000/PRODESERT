@@ -2,6 +2,9 @@ import type {
   CheckoutInput,
   CheckoutValidationResult,
   OrderCreatedView,
+  PaymentInstructionsView,
+  PaymentProofInput,
+  PaymentProofResult,
   PublicOrderView,
 } from '@pro-dessert/contracts';
 
@@ -130,6 +133,91 @@ export async function getPublicOrder(
   const body = await readJson(response);
   if (!response.ok) throw errorFromBody(body, response.status);
   return body as PublicOrderView;
+}
+
+function accessHeaders(accessToken: string | null): Record<string, string> {
+  return accessToken ? { Authorization: `Bearer ${accessToken}` } : {};
+}
+
+export async function getPaymentInstructions(
+  publicNumber: string,
+  accessToken: string | null,
+): Promise<PaymentInstructionsView> {
+  const response = await fetch(
+    `/api/v1/orders/public/${encodeURIComponent(publicNumber)}/payment`,
+    {
+      method: 'GET',
+      credentials: 'include',
+      cache: 'no-store',
+      headers: { Accept: 'application/json', ...accessHeaders(accessToken) },
+      signal: AbortSignal.timeout(requestTimeoutMs),
+    },
+  );
+  const body = await readJson(response);
+  if (!response.ok) throw errorFromBody(body, response.status);
+  return body as PaymentInstructionsView;
+}
+
+export async function submitPaymentProof(
+  publicNumber: string,
+  accessToken: string | null,
+  input: PaymentProofInput,
+  file: File | null,
+  idempotencyKey: string,
+): Promise<PaymentProofResult> {
+  const csrfToken = await getCsrfToken();
+  const form = new FormData();
+  form.set('expectedPaymentVersion', String(input.expectedPaymentVersion));
+  if (input.paymentReference?.trim()) {
+    form.set('paymentReference', input.paymentReference.trim());
+  }
+  if (input.comment?.trim()) form.set('comment', input.comment.trim());
+  if (file) form.set('file', file, file.name);
+  const response = await fetch(
+    `/api/v1/orders/public/${encodeURIComponent(publicNumber)}/payment-proof`,
+    {
+      method: 'POST',
+      credentials: 'include',
+      cache: 'no-store',
+      headers: {
+        Accept: 'application/json',
+        'X-CSRF-Token': csrfToken,
+        'Idempotency-Key': idempotencyKey,
+        ...accessHeaders(accessToken),
+      },
+      body: form,
+      signal: AbortSignal.timeout(30_000),
+    },
+  );
+  const body = await readJson(response);
+  if (!response.ok) throw errorFromBody(body, response.status);
+  return body as PaymentProofResult;
+}
+
+export async function downloadInvoice(
+  publicNumber: string,
+  accessToken: string | null,
+): Promise<{ bytes: Blob; filename: string }> {
+  const response = await fetch(
+    `/api/v1/orders/public/${encodeURIComponent(publicNumber)}/invoice`,
+    {
+      method: 'GET',
+      credentials: 'include',
+      cache: 'no-store',
+      headers: { Accept: 'application/pdf', ...accessHeaders(accessToken) },
+      signal: AbortSignal.timeout(30_000),
+    },
+  );
+  if (!response.ok) {
+    const body = await readJson(response);
+    throw errorFromBody(body, response.status);
+  }
+  const disposition = response.headers.get('content-disposition') ?? '';
+  const match = /filename="([^"]+)"/i.exec(disposition);
+  return {
+    bytes: await response.blob(),
+    filename: match?.[1] ?? `schet-${publicNumber}.pdf`,
+  };
 }
 
 export function getCheckoutErrorMessage(error: unknown): string {

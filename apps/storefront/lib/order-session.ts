@@ -72,3 +72,22 @@ export function readOrderAccessToken(publicNumber: string): string | null {
     return volatileOrderAccess.get(publicNumber) ?? null;
   }
 }
+
+export function captureOrderAccessFromFragment(publicNumber: string): string | null {
+  if (typeof window === 'undefined') return null;
+  const match = /^#access=([A-Za-z0-9_-]{32,128})$/.exec(window.location.hash);
+  if (!match?.[1]) return readOrderAccessToken(publicNumber);
+  const token = match[1];
+  volatileOrderAccess.set(publicNumber, token);
+  try {
+    sessionStorage.setItem(accessKey(publicNumber), token);
+  } catch {
+    // The in-memory copy remains available for this page lifecycle.
+  }
+  window.history.replaceState(
+    window.history.state,
+    '',
+    `${window.location.pathname}${window.location.search}`,
+  );
+  return token;
+}

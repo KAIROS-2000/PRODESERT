@@ -12,6 +12,6 @@ import { OrdersService } from './orders.service';
   imports: [AuthModule, CartModule, OutboxModule],
   controllers: [CheckoutController, OrdersController],
   providers: [CheckoutService, OrdersService, OrderAccessTokenService],
-  exports: [CheckoutService, OrdersService],
+  exports: [CheckoutService, OrdersService, OrderAccessTokenService],
 })
 export class CheckoutModule {}
