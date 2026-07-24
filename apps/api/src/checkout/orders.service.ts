@@ -17,6 +17,7 @@ import { checkoutRequestHash } from '../cart/cart-domain';
 import { CartService } from '../cart/cart.service';
 import { type CartAccess, type ValidatedCart } from '../cart/cart.types';
 import { type Environment } from '../common/config/environment';
+import { OutboxService } from '../outbox/outbox.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { CheckoutService } from './checkout.service';
 import { type CheckoutDto } from './dto/checkout.dto';
@@ -42,6 +43,7 @@ export class OrdersService {
     private readonly checkout: CheckoutService,
     private readonly accessTokens: OrderAccessTokenService,
     private readonly config: ConfigService<Environment, true>,
+    private readonly outbox: OutboxService,
   ) {}
 
   async create(
@@ -277,6 +279,14 @@ export class OrdersService {
         },
       },
     });
+    await this.outbox.create(tx, {
+      aggregateType: 'order',
+      aggregateId: order.id,
+      eventType: 'order.created',
+      idempotencyKey: `order:${order.id}:created:v1`,
+      payload: { orderId: order.id },
+      ...(correlationId ? { correlationId } : {}),
+    });
     await tx.cartItem.deleteMany({ where: { cartId: access.cartId } });
     await tx.cart.update({ where: { id: access.cartId }, data: { updatedAt: now } });
     return {
@@ -315,6 +325,7 @@ export class OrdersService {
       status: order.status,
       createdAt: order.createdAt.toISOString(),
       updatedAt: order.updatedAt.toISOString(),
+      reservationExpiresAt: order.reservationExpiresAt?.toISOString() ?? null,
       customer: {
         firstName: order.guestName,
         lastName: order.guestSurname,
@@ -388,6 +399,12 @@ export class OrdersService {
   private statusMessage(status: OrderStatus): string {
     if (status === 'AWAITING_STOCK_CONFIRMATION') {
       return 'Магазин проверяет наличие. Не переводите деньги до получения подтверждения и реквизитов.';
+    }
+    if (status === 'AWAITING_PAYMENT') {
+      return 'Наличие подтверждено, товары зарезервированы. Реквизиты для банковского перевода ещё не опубликованы.';
+    }
+    if (status === 'RESERVATION_EXPIRED') {
+      return 'Срок резерва истёк, товары освобождены. Не переводите деньги; для нового резерва свяжитесь с магазином.';
     }
     if (status === 'READY_FOR_PICKUP') {
       return 'Заказ готов. Заберите его в магазине по адресу: Оренбург, Липовая улица, 20.';

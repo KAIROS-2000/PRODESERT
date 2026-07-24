@@ -5,6 +5,11 @@ const optionalNonEmptyString = z.preprocess(
   z.string().trim().min(1).optional(),
 );
 
+const optionalUrl = z.preprocess(
+  (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+  z.string().url().optional(),
+);
+
 const booleanFromString = (defaultValue: boolean): z.ZodType<boolean, z.ZodTypeDef, unknown> =>
   z
     .enum(['true', 'false'])
@@ -17,6 +22,7 @@ const environmentSchema = z
     PORT: z.coerce.number().int().min(1).max(65_535).default(4000),
     TRUST_PROXY: booleanFromString(false),
     DATABASE_URL: z.string().trim().min(1),
+    REDIS_URL: z.string().url().default('redis://localhost:6379'),
     CORS_ORIGINS: z
       .string()
       .default('http://localhost:3000,http://localhost:3001')
@@ -58,6 +64,25 @@ const environmentSchema = z
     SMTP_USER: optionalNonEmptyString,
     SMTP_PASSWORD: optionalNonEmptyString,
     SMTP_FROM: z.string().trim().min(3).default('Pro Dessert <no-reply@example.invalid>'),
+    ONE_C_ADAPTER: z.enum(['mock', 'rest']).default('mock'),
+    ONE_C_BASE_URL: optionalUrl,
+    ONE_C_KEY_ID: z.string().trim().min(1).max(64).default('local-v1'),
+    ONE_C_INBOUND_HMAC_SECRET: optionalNonEmptyString,
+    ONE_C_OUTBOUND_HMAC_SECRET: optionalNonEmptyString,
+    ONE_C_SIGNATURE_TOLERANCE_SECONDS: z.coerce.number().int().min(30).max(900).default(300),
+    ONE_C_REQUEST_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(120_000).default(10_000),
+    OUTBOX_POLL_INTERVAL_MS: z.coerce.number().int().min(250).max(60_000).default(2_000),
+    OUTBOX_PROCESSING_TIMEOUT_SECONDS: z.coerce.number().int().min(30).max(3_600).default(300),
+    OUTBOX_MAX_ATTEMPTS: z.coerce.number().int().min(1).max(20).default(6),
+    WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(50).default(4),
+    DEFAULT_RESERVATION_HOURS: z.coerce.number().int().min(1).max(720).default(24),
+    B2B_RESERVATION_HOURS: z.coerce.number().int().min(1).max(720).default(72),
+    RESERVATION_SWEEP_INTERVAL_MS: z.coerce
+      .number()
+      .int()
+      .min(10_000)
+      .max(3_600_000)
+      .default(60_000),
   })
   .superRefine((env, context) => {
     for (const origin of env.CORS_ORIGINS) {
@@ -113,6 +138,35 @@ const environmentSchema = z
         path: ['ORDER_ACCESS_TOKEN_SECRET'],
         message: 'ORDER_ACCESS_TOKEN_SECRET with at least 32 characters is required in production',
       });
+    }
+    if (env.ONE_C_ADAPTER === 'mock') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['ONE_C_ADAPTER'],
+        message: 'ONE_C_ADAPTER=mock is forbidden in production',
+      });
+    }
+    if (!env.ONE_C_BASE_URL) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['ONE_C_BASE_URL'],
+        message: 'ONE_C_BASE_URL is required in production',
+      });
+    } else if (new URL(env.ONE_C_BASE_URL).protocol !== 'https:') {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['ONE_C_BASE_URL'],
+        message: 'ONE_C_BASE_URL must use HTTPS in production',
+      });
+    }
+    for (const key of ['ONE_C_INBOUND_HMAC_SECRET', 'ONE_C_OUTBOUND_HMAC_SECRET'] as const) {
+      if (!env[key] || env[key].length < 32) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [key],
+          message: `${key} with at least 32 characters is required in production`,
+        });
+      }
     }
   });
 

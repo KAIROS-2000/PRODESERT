@@ -26,7 +26,7 @@ services:
     restart: unless-stopped
     command: ['redis-server', '--appendonly', 'yes', '--maxmemory-policy', 'noeviction']
     ports:
-      - '127.0.0.1:6379:6379'
+      - '127.0.0.1:${REDIS_PORT:-56379}:6379'
     volumes:
       - redis-data:/data
     healthcheck:
@@ -133,6 +133,40 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
+    networks: [pro-dessert]
+
+  worker:
+    profiles: [full]
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    restart: unless-stopped
+    command: ['node', 'dist/worker.js']
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pro_dessert}:${POSTGRES_PASSWORD:-local-development-only}@postgres:5432/${POSTGRES_DB:-pro_dessert}?schema=public
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "const net=require('node:net');let pending=2,failed=false;for(const [host,port] of [['postgres',5432],['redis',6379]]){const socket=net.createConnection({host,port});socket.setTimeout(3000);socket.on('connect',()=>{socket.destroy();if(--pending===0)process.exit(failed?1:0)});const fail=()=>{failed=true;socket.destroy();if(--pending===0)process.exit(1)};socket.on('error',fail);socket.on('timeout',fail)}",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks: [pro-dessert]
 
   storefront:

@@ -6,6 +6,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { type NestExpressApplication } from '@nestjs/platform-express';
+import { type Request } from 'express';
 import { AppModule } from './app.module';
 import { type Environment } from './common/config/environment';
 import { ApiExceptionFilter } from './common/errors/api-exception.filter';
@@ -27,6 +28,15 @@ async function bootstrap(): Promise<void> {
   }
 
   app.setGlobalPrefix('api/v1');
+  app.use(
+    '/api/v1/integration/1c',
+    json({
+      limit: '2mb',
+      verify: (request: Request & { rawBody?: Buffer }, _response, buffer) => {
+        request.rawBody = Buffer.from(buffer);
+      },
+    }),
+  );
   app.use(json({ limit: '128kb' }));
   app.use(urlencoded({ extended: false, limit: '64kb' }));
   app.use(cookieParser());
@@ -45,6 +55,11 @@ async function bootstrap(): Promise<void> {
       'X-CSRF-Token',
       'Idempotency-Key',
       'Authorization',
+      'X-PD-Key-Id',
+      'X-PD-Timestamp',
+      'X-PD-Nonce',
+      'X-PD-Content-Sha256',
+      'X-PD-Signature',
     ],
     origin: (
       origin: string | undefined,

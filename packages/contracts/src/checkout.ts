@@ -96,6 +96,8 @@ export interface PublicOrderView {
   readonly status: OrderStatus;
   readonly createdAt: string;
   readonly updatedAt: string;
+  /** Reserve deadline from 1C. Null until stock is confirmed or after the reserve is released. */
+  readonly reservationExpiresAt: string | null;
   readonly customer: {
     readonly firstName: string;
     readonly lastName: string | null;

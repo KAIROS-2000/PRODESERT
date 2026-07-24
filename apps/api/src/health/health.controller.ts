@@ -1,5 +1,5 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
-import { HealthService } from './health.service';
+import { HealthService, type ReadinessView } from './health.service';
 
 @Controller('health')
 export class HealthController {
@@ -11,7 +11,7 @@ export class HealthController {
   }
 
   @Get('ready')
-  async ready(): Promise<{ status: 'ok'; checks: { database: 'up' }; timestamp: string }> {
+  async ready(): Promise<ReadinessView> {
     try {
       return await this.health.ready();
     } catch {

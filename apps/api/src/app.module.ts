@@ -13,8 +13,12 @@ import { RequestLoggingInterceptor } from './common/logging/request-logging.inte
 import { RequestContextMiddleware } from './common/request/request-context.middleware';
 import { CsrfGuard } from './common/security/csrf.guard';
 import { HealthModule } from './health/health.module';
+import { OneCModule } from './one-c/one-c.module';
+import { OutboxModule } from './outbox/outbox.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { QueueModule } from './queue/queue.module';
 import { RbacModule } from './rbac/rbac.module';
+import { ReservationsModule } from './reservations/reservations.module';
 
 @Module({
   imports: [
@@ -27,12 +31,16 @@ import { RbacModule } from './rbac/rbac.module';
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 120 }]),
     CommonModule,
     PrismaModule,
+    QueueModule,
+    OutboxModule,
     AuditModule,
     HealthModule,
     AuthModule,
     CatalogModule,
     CartModule,
     CheckoutModule,
+    ReservationsModule,
+    OneCModule,
     RbacModule,
   ],
   providers: [

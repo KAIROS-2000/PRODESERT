@@ -38,8 +38,8 @@ const statusCopy: Record<OrderStatus, { title: string; description: string }> = 
     description: 'Магазин сверяет фактические остатки перед резервом и оплатой.',
   },
   AWAITING_PAYMENT: {
-    title: 'Ожидаем банковский перевод',
-    description: 'Наличие подтверждено. Следуйте полученным реквизитам для оплаты.',
+    title: 'Товары зарезервированы',
+    description: 'Наличие подтверждено. Реквизиты для банковского перевода ещё не опубликованы.',
   },
   PAYMENT_VERIFICATION: {
     title: 'Проверяем оплату',
@@ -62,7 +62,8 @@ const statusCopy: Record<OrderStatus, { title: string; description: string }> = 
   },
   RESERVATION_EXPIRED: {
     title: 'Срок резерва истёк',
-    description: 'Резерв освобождён. Для восстановления нужно подтверждение магазина.',
+    description:
+      'Товары освобождены. Не переводите деньги; для нового резерва свяжитесь с магазином.',
   },
   RETURN_REQUESTED: {
     title: 'Возврат запрошен',
@@ -208,6 +209,12 @@ export function OrderStatusView({ publicNumber }: { publicNumber: string }) {
               <dd>{formatPickupDate(order.desiredPickupAt)}</dd>
             </div>
           ) : null}
+          {order.reservationExpiresAt && order.status === OrderStatus.AWAITING_PAYMENT ? (
+            <div className={styles.statusDatum}>
+              <dt>Резерв действует до</dt>
+              <dd>{formatDateTime(order.reservationExpiresAt)}</dd>
+            </div>
+          ) : null}
         </dl>
 
         <div className={styles.infoBox}>
@@ -224,6 +231,29 @@ export function OrderStatusView({ publicNumber }: { publicNumber: string }) {
             <span>
               Реквизиты для банковского перевода будут доступны только после подтверждения наличия и
               резерва товаров.
+            </span>
+          </div>
+        ) : null}
+
+        {order.status === OrderStatus.AWAITING_PAYMENT ? (
+          <div className={styles.warningBox}>
+            <AlertTriangle aria-hidden="true" size={20} />
+            <span>
+              Товары зарезервированы
+              {order.reservationExpiresAt
+                ? ` до ${formatDateTime(order.reservationExpiresAt)}`
+                : ''}
+              . Реквизиты пока не опубликованы — не выполняйте перевод.
+            </span>
+          </div>
+        ) : null}
+
+        {order.status === OrderStatus.RESERVATION_EXPIRED ? (
+          <div className={styles.warningBox}>
+            <AlertTriangle aria-hidden="true" size={20} />
+            <span>
+              Срок резерва истёк, товары снова доступны для продажи. Перевод по этому заказу
+              выполнять нельзя.
             </span>
           </div>
         ) : null}
