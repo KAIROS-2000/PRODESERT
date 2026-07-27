@@ -171,6 +171,7 @@ model User {
   verifiedPayments        Payment[]                @relation("PaymentVerifier")
   paymentDocuments        PaymentDocument[]        @relation("PaymentDocumentUploader")
   emailLogs               EmailLog[]               @relation("EmailLogRecipient")
+  internalOrderNotes      OrderInternalNote[]      @relation("OrderNoteAuthor")
 
   @@map("users")
 }
@@ -349,6 +350,7 @@ model Category {
   normalizationMappings CategoryNormalizationMapping[]
   productCategories     ProductCategory[]
   attributeDefinitions  AttributeDefinition[]
+  promotionCategories   PromotionCategory[]
 
   @@index([parentId, active, hidden, sortOrder])
   @@index([path])
@@ -413,6 +415,7 @@ model Product {
   isNew              Boolean                  @default(false) @map("is_new")
   popularityScore    Int                      @default(0) @map("popularity_score")
   sortOrder          Int                      @default(0) @map("sort_order")
+  contentVersion     Int                      @default(1) @map("content_version")
   active             Boolean                  @default(true)
   oneCSourceVersion  String?                  @map("one_c_source_version") @db.VarChar(120)
   oneCLastSyncedAt   DateTime?                @map("one_c_last_synced_at") @db.Timestamptz(3)
@@ -428,6 +431,7 @@ model Product {
   relatedProducts   RelatedProduct[]        @relation("RelatedProductSource")
   relatedToProducts RelatedProduct[]        @relation("RelatedProductTarget")
   orderItems        OrderItem[]
+  promotionProducts PromotionProduct[]
 
   @@index([brandId, active])
   @@index([active, isHit, isNew])
@@ -663,6 +667,107 @@ model RelatedProduct {
   @@map("related_products")
 }
 
+model OrderInternalNote {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId      String   @map("order_id") @db.Uuid
+  authorUserId String   @map("author_user_id") @db.Uuid
+  body         String   @db.Text
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  order  Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  author User  @relation("OrderNoteAuthor", fields: [authorUserId], references: [id], onDelete: Restrict)
+
+  @@index([orderId, createdAt])
+  @@index([authorUserId, createdAt])
+  @@map("order_internal_notes")
+}
+
+model Promotion {
+  id                    String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title                 String    @db.VarChar(300)
+  body                  String?   @db.Text
+  imageUrl              String?   @map("image_url") @db.VarChar(1000)
+  imageAlt              String?   @map("image_alt") @db.VarChar(300)
+  linkUrl               String?   @map("link_url") @db.VarChar(1000)
+  startsAt              DateTime? @map("starts_at") @db.Timestamptz(3)
+  endsAt                DateTime? @map("ends_at") @db.Timestamptz(3)
+  active                Boolean   @default(false)
+  priority              Int       @default(0)
+  badgeColor            String?   @map("badge_color") @db.VarChar(16)
+  textColor             String?   @map("text_color") @db.VarChar(16)
+  discountPercent       Decimal?  @map("discount_percent") @db.Decimal(5, 2)
+  discountManagedBySite Boolean   @default(false) @map("discount_managed_by_site")
+  version               Int       @default(1)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  products   PromotionProduct[]
+  categories PromotionCategory[]
+
+  @@index([active, startsAt, endsAt, priority])
+  @@map("promotions")
+}
+
+model PromotionProduct {
+  promotionId String @map("promotion_id") @db.Uuid
+  productId   String @map("product_id") @db.Uuid
+
+  promotion Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@id([promotionId, productId])
+  @@index([productId])
+  @@map("promotion_products")
+}
+
+model PromotionCategory {
+  promotionId String @map("promotion_id") @db.Uuid
+  categoryId  String @map("category_id") @db.Uuid
+
+  promotion Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  category  Category  @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  @@id([promotionId, categoryId])
+  @@index([categoryId])
+  @@map("promotion_categories")
+}
+
+model Banner {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  title     String    @db.VarChar(300)
+  body      String?   @db.Text
+  imageUrl  String?   @map("image_url") @db.VarChar(1000)
+  imageAlt  String?   @map("image_alt") @db.VarChar(300)
+  linkUrl   String?   @map("link_url") @db.VarChar(1000)
+  startsAt  DateTime? @map("starts_at") @db.Timestamptz(3)
+  endsAt    DateTime? @map("ends_at") @db.Timestamptz(3)
+  active    Boolean   @default(false)
+  priority  Int       @default(0)
+  version   Int       @default(1)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([active, startsAt, endsAt, priority])
+  @@map("banners")
+}
+
+model ContentPage {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug           String    @unique @db.VarChar(220)
+  title          String    @db.VarChar(300)
+  body           String    @db.Text
+  seoTitle       String?   @map("seo_title") @db.VarChar(300)
+  seoDescription String?   @map("seo_description") @db.VarChar(500)
+  published      Boolean   @default(false)
+  publishedAt    DateTime? @map("published_at") @db.Timestamptz(3)
+  version        Int       @default(1)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  @@index([published, publishedAt])
+  @@map("content_pages")
+}
+
 model Cart {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId         String?   @unique @map("user_id") @db.Uuid
@@ -752,6 +857,7 @@ model Order {
   stockReservations StockReservation[]
   payment           Payment?
   emailLogs         EmailLog[]
+  internalNotes     OrderInternalNote[]
 
   @@unique([idempotencyScopeHash, idempotencyKey])
   @@index([customerId, createdAt])

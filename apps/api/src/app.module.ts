@@ -5,6 +5,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuditModule } from './audit/audit.module';
 import { AccountModule } from './account/account.module';
 import { AccountOrdersModule } from './account-orders/account-orders.module';
+import { AdminModule } from './admin/admin.module';
 import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { CartModule } from './cart/cart.module';
@@ -37,6 +38,7 @@ import { ReservationsModule } from './reservations/reservations.module';
     QueueModule,
     OutboxModule,
     AuditModule,
+    AdminModule,
     AccountModule,
     AccountOrdersModule,
     HealthModule,

@@ -1,8 +1,9 @@
-import { LayoutDashboard, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { LogoutButton } from '@/components/logout-button';
+import { AdminNavigation } from '@/components/admin-navigation';
 import { getAdminSession, hasStaffRole } from '@/lib/session';
 
 export default async function ProtectedLayout({ children }: { children: ReactNode }) {
@@ -28,12 +29,7 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
             <small>Управление</small>
           </div>
         </Link>
-        <nav aria-label="Разделы панели">
-          <Link className="nav-link nav-link--active" href="/">
-            <LayoutDashboard aria-hidden="true" size={19} />
-            Обзор
-          </Link>
-        </nav>
+        <AdminNavigation roles={session.user.roles} />
         <div className="sidebar-meta">
           <div>
             <MapPin aria-hidden="true" size={17} />

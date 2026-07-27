@@ -1,4 +1,5 @@
-import { AttributeDataType, PrismaClient } from '@prisma/client';
+import argon2 from 'argon2';
+import { AttributeDataType, PrismaClient, Role } from '@prisma/client';
 import {
   demoBrands,
   demoCategories,
@@ -339,6 +340,55 @@ async function assignAttribute(
 }
 
 async function seed(): Promise<void> {
+  const staffPassword = process.env.SEED_STAFF_PASSWORD ?? 'Local-Only-Change-Me-2026!';
+  const staffPasswordHash = await argon2.hash(staffPassword, { type: argon2.argon2id });
+  const staffAccounts: readonly { email: string; role: Role; firstName: string; lastName: string }[] = [
+    {
+      email: 'manager.local@pro-dessert.test',
+      role: Role.MANAGER,
+      firstName: 'Мария',
+      lastName: 'Менеджер',
+    },
+    {
+      email: 'content.local@pro-dessert.test',
+      role: Role.CONTENT_MANAGER,
+      firstName: 'Ксения',
+      lastName: 'Контент',
+    },
+    {
+      email: 'admin.local@pro-dessert.test',
+      role: Role.ADMIN,
+      firstName: 'Алексей',
+      lastName: 'Администратор',
+    },
+  ];
+  for (const staff of staffAccounts) {
+    await prisma.user.upsert({
+      where: { emailNormalized: staff.email },
+      update: {
+        email: staff.email,
+        passwordHash: staffPasswordHash,
+        firstName: staff.firstName,
+        lastName: staff.lastName,
+        role: staff.role,
+        isActive: true,
+        emailVerifiedAt: new Date(),
+        failedLoginAttempts: 0,
+        loginLockedUntil: null,
+      },
+      create: {
+        email: staff.email,
+        emailNormalized: staff.email,
+        passwordHash: staffPasswordHash,
+        firstName: staff.firstName,
+        lastName: staff.lastName,
+        role: staff.role,
+        isActive: true,
+        emailVerifiedAt: new Date(),
+      },
+    });
+  }
+
   const pickupLocation = await prisma.pickupLocation.upsert({
     where: { code: 'orenburg-lipovaya-20' },
     update: {
@@ -774,6 +824,67 @@ async function seed(): Promise<void> {
       },
     });
   }
+
+  const existingPromotion = await prisma.promotion.findFirst({
+    where: { title: 'Сезон профессионального шоколада' },
+    select: { id: true },
+  });
+  const promotionData = {
+    title: 'Сезон профессионального шоколада',
+    body: 'Подборка ингредиентов и инвентаря для шоколатье. Цена остаётся источником 1С.',
+    imageUrl: '/images/catalog/chocolate-couverture.webp',
+    imageAlt: 'Профессиональный шоколад для кондитеров',
+    linkUrl: '/catalog?category=chocolate-couverture',
+    active: true,
+    priority: 10,
+    badgeColor: '#872746',
+    textColor: '#FFFFFF',
+  };
+  const promotion = existingPromotion
+    ? await prisma.promotion.update({ where: { id: existingPromotion.id }, data: promotionData })
+    : await prisma.promotion.create({ data: promotionData });
+  await prisma.promotionProduct.deleteMany({ where: { promotionId: promotion.id } });
+  await prisma.promotionProduct.createMany({
+    data: productIds.slice(0, 4).map((productId) => ({ promotionId: promotion.id, productId })),
+    skipDuplicates: true,
+  });
+
+  const existingBanner = await prisma.banner.findFirst({
+    where: { title: 'Профессиональный каталог для кондитеров' },
+    select: { id: true },
+  });
+  const bannerData = {
+    title: 'Профессиональный каталог для кондитеров',
+    body: 'Ингредиенты, упаковка и инвентарь с самовывозом в Оренбурге.',
+    imageUrl: '/images/catalog/pro-ingredients.webp',
+    imageAlt: 'Ингредиенты для кондитеров',
+    linkUrl: '/catalog',
+    active: true,
+    priority: 10,
+  };
+  if (existingBanner) await prisma.banner.update({ where: { id: existingBanner.id }, data: bannerData });
+  else await prisma.banner.create({ data: bannerData });
+
+  await prisma.contentPage.upsert({
+    where: { slug: 'o-pro-dessert' },
+    update: {
+      title: 'О Pro Dessert',
+      body: 'Pro Dessert — профессиональный каталог товаров для кондитеров. Заказы выдаются только самовывозом.',
+      seoTitle: 'О Pro Dessert',
+      seoDescription: 'Профессиональные товары для кондитеров с самовывозом.',
+      published: true,
+      publishedAt: new Date(),
+    },
+    create: {
+      slug: 'o-pro-dessert',
+      title: 'О Pro Dessert',
+      body: 'Pro Dessert — профессиональный каталог товаров для кондитеров. Заказы выдаются только самовывозом.',
+      seoTitle: 'О Pro Dessert',
+      seoDescription: 'Профессиональные товары для кондитеров с самовывозом.',
+      published: true,
+      publishedAt: new Date(),
+    },
+  });
 }
 
 seed()
