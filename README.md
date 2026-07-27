@@ -31,7 +31,31 @@ infrastructure/
 docs/          архитектура и эксплуатационная документация
 ```
 
-## Локальный запуск
+## Быстрый запуск для ручного тестирования
+
+Полный локальный стенд запускается в Docker и доступен через единый адрес Nginx. Команды выполняются в корне репозитория, в PowerShell:
+
+```powershell
+if (!(Test-Path .env)) { Copy-Item .env.example .env }
+npm ci
+$env:SEED_STAFF_PASSWORD = '<придумайте-локальный-пароль>'
+docker compose --profile full up -d --build
+npm run db:seed
+```
+
+После завершения команд откройте:
+
+- магазин: `http://localhost:8080`;
+- панель сотрудников: `http://localhost:8080/admin`;
+- API readiness: `http://localhost:8080/api/v1/health/ready`;
+- тестовая почта Mailpit: `http://localhost:8025`;
+- MinIO Console: `http://localhost:9001`.
+
+Для входа в панель используйте `admin.local@pro-dessert.test` и значение `SEED_STAFF_PASSWORD`, заданное выше. Другие демонстрационные роли: `manager.local@pro-dessert.test` и `content.local@pro-dessert.test`. Реквизиты оплаты в demo-режиме не предназначены для реальных переводов.
+
+Проверить состояние сервисов можно командой `docker compose --profile full ps`, остановить стенд — `docker compose --profile full down`. Данные PostgreSQL, Redis и MinIO сохраняются в Docker volumes; команда `down` их не удаляет.
+
+## Локальный запуск в режиме разработки
 
 Требуются Node.js 20.9+, npm, Docker и Docker Compose.
 
@@ -46,7 +70,7 @@ docs/          архитектура и эксплуатационная док
 
 - storefront: `http://localhost:3000`;
 - admin: `http://localhost:3001`;
-- API / Swagger: `http://localhost:4000/api/v1`, `http://localhost:4000/docs`;
+- API readiness: `http://localhost:4000/api/v1/health/ready`;
 - Mailpit: `http://localhost:8025`;
 - MinIO console: `http://localhost:9001`.
 

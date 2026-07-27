@@ -15,9 +15,9 @@
 Перед запуском поднимите полный локальный профиль, примените миграции и загрузите демонстрационные данные. Пароль тестовых сотрудников передаётся только через окружение:
 
 ```powershell
-$env:POSTGRES_PORT = '55400'
+$env:POSTGRES_PORT = '55432'
 $env:CORS_ORIGINS = 'http://localhost:3000,http://localhost:3001,http://localhost:8080,http://127.0.0.1:8080'
-$env:DATABASE_URL = 'postgresql://pro_dessert:local-development-only@localhost:55400/pro_dessert?schema=public'
+$env:DATABASE_URL = 'postgresql://pro_dessert:local-development-only@localhost:55432/pro_dessert?schema=public'
 $env:SEED_STAFF_PASSWORD = '<local-only-test-password>'
 docker compose --profile full up -d --build
 npm run db:seed
