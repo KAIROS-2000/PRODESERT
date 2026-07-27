@@ -16,7 +16,8 @@
   width: min(100%, 620px);
 }
 .search-autocomplete--compact {
-  width: min(350px, 32vw);
+  width: min(260px, 22vw);
+  flex: 0 1 260px;
   margin-left: auto;
 }
 .search-autocomplete form {
@@ -1105,17 +1106,17 @@
   height: 245px;
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1200px) {
   .header-row {
     gap: 16px;
   }
-  .desktop-nav {
-    gap: 16px;
-    font-size: 0.82rem;
-  }
   .search-autocomplete--compact {
-    width: min(300px, 30vw);
+    width: min(420px, 42vw);
+    flex-basis: 420px;
   }
+}
+
+@media (max-width: 1080px) {
   .catalog-layout {
     grid-template-columns: 230px minmax(0, 1fr);
     gap: 20px;
@@ -1134,6 +1135,7 @@
 @media (max-width: 900px) {
   .search-autocomplete--compact {
     width: min(460px, 60vw);
+    flex-basis: 60vw;
   }
   .catalog-hero {
     padding: 30px;

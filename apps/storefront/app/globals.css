@@ -48,6 +48,24 @@ button,
 input {
   font: inherit;
 }
+input,
+textarea,
+select {
+  max-width: 100%;
+}
+img,
+picture,
+video,
+canvas {
+  max-width: 100%;
+}
+main,
+section,
+article,
+form,
+.shell {
+  min-width: 0;
+}
 button,
 summary,
 a {
@@ -88,6 +106,8 @@ a {
   align-items: center;
   justify-content: center;
   gap: 8px;
+  padding-block: 5px;
+  text-align: center;
 }
 .site-header {
   position: sticky;
@@ -102,12 +122,16 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 28px;
+  gap: 18px;
+}
+.header-row > * {
+  min-width: 0;
 }
 .brand {
   display: inline-flex;
   align-items: center;
   gap: 11px;
+  flex: 0 0 auto;
 }
 .brand__mark {
   width: 42px;
@@ -135,10 +159,12 @@ a {
 .desktop-nav {
   display: flex;
   align-items: center;
-  gap: 30px;
+  flex: 0 0 auto;
+  gap: 22px;
   margin-left: auto;
   font-size: 0.9rem;
   font-weight: 650;
+  white-space: nowrap;
 }
 .desktop-nav a:hover,
 .footer-links a:hover,
@@ -148,6 +174,7 @@ a {
 .header-actions {
   display: flex;
   align-items: center;
+  flex: 0 0 auto;
 }
 .mobile-menu {
   display: none;
@@ -1097,7 +1124,7 @@ a {
   line-height: 1.45;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1200px) {
   .desktop-nav,
   .desktop-account {
     display: none;
@@ -1105,6 +1132,9 @@ a {
   .mobile-menu {
     display: block;
   }
+}
+
+@media (max-width: 900px) {
   .hero-grid,
   .process-grid,
   .pickup-card,
@@ -1153,6 +1183,7 @@ a {
   }
   .header-row {
     min-height: 66px;
+    gap: 10px;
   }
   .brand__text small {
     display: none;
@@ -1237,6 +1268,23 @@ a {
   .home-banner__content {
     min-height: 120px;
     padding: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .pickup-strip__content {
+    justify-content: center;
+    font-size: 0.7rem;
+    line-height: 1.35;
+  }
+  .mobile-menu summary {
+    width: 46px;
+    min-width: 46px;
+    justify-content: center;
+    padding: 0;
+  }
+  .mobile-menu summary span {
+    display: none;
   }
 }
 

@@ -428,6 +428,7 @@
   display: inline-flex;
   flex-wrap: wrap;
   align-items: baseline;
+  max-width: 100%;
   gap: 7px;
   margin: 19px 0 5px;
   padding: 10px 14px;
@@ -444,10 +445,13 @@
 .orderNumber strong {
   font-size: 1.18rem;
   letter-spacing: 0.02em;
+  overflow-wrap: anywhere;
 }
 
 .statusBadge {
-  display: inline-flex;
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
   align-items: center;
   gap: 7px;
   margin-top: 14px;
@@ -457,6 +461,7 @@
   color: #74451f;
   font-size: 0.76rem;
   font-weight: 800;
+  overflow-wrap: anywhere;
 }
 
 .successLead,
@@ -973,5 +978,40 @@
 
   .actions > * {
     width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .successCard,
+  .statusCard {
+    padding-top: 22px;
+    padding-bottom: 22px;
+  }
+
+  .successCard h1,
+  .statusHeader h1 {
+    font-size: clamp(1.75rem, 9vw, 2.25rem);
+  }
+
+  .orderNumber {
+    display: grid;
+    align-items: start;
+    gap: 2px;
+    padding: 9px 11px;
+  }
+
+  .nextSteps li {
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .stepNumber {
+    width: 28px;
+    height: 28px;
+  }
+
+  .warningBox,
+  .infoBox {
+    padding: 13px;
   }
 }
