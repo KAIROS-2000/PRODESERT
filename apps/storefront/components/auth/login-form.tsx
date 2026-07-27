@@ -9,7 +9,7 @@ import { z } from 'zod';
 
 import { FormField, FormStatus } from '@/components/auth/form-controls';
 import { useCart } from '@/components/cart/cart-provider';
-import { getAuthErrorMessage, postAuth } from '@/lib/auth-api';
+import { getAuthErrorMessage, notifyAuthChanged, postAuth } from '@/lib/auth-api';
 
 const loginSchema = z.object({
   email: z.string().email('Введите корректный email.'),
@@ -18,7 +18,7 @@ const loginSchema = z.object({
 
 type LoginValues = z.infer<typeof loginSchema>;
 
-export function LoginForm() {
+export function LoginForm({ redirectTo = '/' }: { redirectTo?: string }) {
   const router = useRouter();
   const { mergeCartAfterLogin } = useCart();
   const [requestError, setRequestError] = useState<string | null>(null);
@@ -38,8 +38,9 @@ export function LoginForm() {
     try {
       await postAuth('/auth/login', values);
       await mergeCartAfterLogin();
+      notifyAuthChanged();
       setSuccess(true);
-      router.replace('/');
+      router.replace(redirectTo);
       router.refresh();
     } catch (error) {
       setRequestError(getAuthErrorMessage(error));
@@ -68,7 +69,7 @@ export function LoginForm() {
       />
       {requestError ? <FormStatus type="error">{requestError}</FormStatus> : null}
       {success ? (
-        <FormStatus type="success">Вход выполнен. Открываем главную страницу…</FormStatus>
+        <FormStatus type="success">Вход выполнен. Открываем нужную страницу…</FormStatus>
       ) : null}
       <button className="button button--primary button--wide" type="submit" disabled={isSubmitting}>
         {isSubmitting ? (

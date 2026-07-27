@@ -2,12 +2,13 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { LoaderCircle, UserPlus } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { FormField, FormStatus } from '@/components/auth/form-controls';
 import { getAuthErrorMessage, postAuth } from '@/lib/auth-api';
+import { readLastCreatedOrder } from '@/lib/order-session';
 
 const registerSchema = z
   .object({
@@ -32,11 +33,17 @@ export function RegisterForm() {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<RegisterValues>({
     resolver: zodResolver(registerSchema),
     defaultValues: { email: '', password: '', passwordConfirmation: '' },
   });
+
+  useEffect(() => {
+    const order = readLastCreatedOrder();
+    if (order?.guest && order.customerEmail) setValue('email', order.customerEmail);
+  }, [setValue]);
 
   const onSubmit = handleSubmit(async ({ email, password }) => {
     setRequestError(null);

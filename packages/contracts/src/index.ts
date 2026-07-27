@@ -1,4 +1,6 @@
 export * from './access.js';
+export * from './account.js';
+export * from './account-order.js';
 export * from './api.js';
 export * from './cart.js';
 export * from './catalog.js';

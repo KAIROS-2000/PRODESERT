@@ -6,7 +6,18 @@ import { LoginForm } from '@/components/auth/login-form';
 
 export const metadata: Metadata = { title: 'Вход' };
 
-export default function LoginPage() {
+function safeNextPath(value: string | string[] | undefined): string {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  if (!candidate?.startsWith('/') || candidate.startsWith('//')) return '/';
+  return candidate;
+}
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string | string[] }>;
+}) {
+  const redirectTo = safeNextPath((await searchParams).next);
   return (
     <AuthShell
       eyebrow="Личный профиль"
@@ -19,7 +30,7 @@ export default function LoginPage() {
         </p>
       }
     >
-      <LoginForm />
+      <LoginForm redirectTo={redirectTo} />
     </AuthShell>
   );
 }

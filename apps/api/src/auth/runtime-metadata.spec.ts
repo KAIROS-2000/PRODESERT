@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { ConfigService } from '@nestjs/config';
+import { AccountService } from '../account/account.service';
 import { AuthNotificationPort } from './auth-notification.port';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -20,6 +21,7 @@ describe('Nest runtime metadata', () => {
       AuthNotificationPort,
       ConfigService,
       JsonLogger,
+      AccountService,
     ]);
     expect(Reflect.getMetadata('design:paramtypes', AuthController)).toEqual([
       AuthService,

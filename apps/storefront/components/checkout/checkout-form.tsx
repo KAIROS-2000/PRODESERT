@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { CheckoutField, CheckoutInput } from '@pro-dessert/contracts';
+import type { AccountOrganization, CheckoutField, CheckoutInput } from '@pro-dessert/contracts';
 import {
   Info,
   Landmark,
@@ -19,6 +19,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { useCart } from '@/components/cart/cart-provider';
+import { AccountApiError, getAccountOrganizations, getAccountProfile } from '@/lib/account-api';
 import {
   CheckoutApiError,
   createOrder,
@@ -167,14 +168,17 @@ export function CheckoutForm() {
   const router = useRouter();
   const { cart, isLoading, isMutating, error: cartError, refresh } = useCart();
   const [requestError, setRequestError] = useState<string | null>(null);
+  const [savedOrganizations, setSavedOrganizations] = useState<AccountOrganization[]>([]);
   const submitInFlight = useRef(false);
   const orderCreated = useRef(false);
   const idempotencyKey = useRef<string | null>(null);
   const idempotencyPayload = useRef<string | null>(null);
   const {
     register,
+    getValues,
     handleSubmit,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<CheckoutFormValues>({
     resolver: zodResolver(checkoutSchema),
@@ -198,6 +202,33 @@ export function CheckoutForm() {
   useEffect(() => {
     if (!isLoading && cartNeedsReview && !orderCreated.current) router.replace('/cart');
   }, [cartNeedsReview, isLoading, router]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all([getAccountProfile(), getAccountOrganizations()])
+      .then(([profile, organizations]) => {
+        if (cancelled) return;
+        if (!getValues('firstName') && profile.firstName) {
+          setValue('firstName', profile.firstName);
+        }
+        if (!getValues('lastName') && profile.lastName) {
+          setValue('lastName', profile.lastName);
+        }
+        if (!getValues('phone') && profile.phone) {
+          setValue('phone', profile.phone);
+        }
+        if (!getValues('email')) setValue('email', profile.email);
+        setSavedOrganizations(organizations);
+      })
+      .catch((error: unknown) => {
+        if (!(error instanceof AccountApiError && error.status === 401)) {
+          // Checkout remains available to guests if optional profile prefill is unavailable.
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [getValues, setValue]);
 
   const submitValidOrder = async (values: CheckoutFormValues) => {
     if (submitInFlight.current) return;
@@ -238,7 +269,7 @@ export function CheckoutForm() {
 
       const order = await createOrder(input, currentIdempotencyKey);
       orderCreated.current = true;
-      rememberCreatedOrder(order);
+      rememberCreatedOrder(order, values.email);
       try {
         await refresh();
       } catch {
@@ -421,6 +452,33 @@ export function CheckoutForm() {
               </span>
             </div>
             <div className={styles.fieldGrid}>
+              {savedOrganizations.length > 0 ? (
+                <div className={styles.fullField}>
+                  <label htmlFor="checkout-saved-organization">Сохранённая организация</label>
+                  <select
+                    id="checkout-saved-organization"
+                    defaultValue=""
+                    onChange={(event) => {
+                      const organization = savedOrganizations.find(
+                        (item) => item.id === event.target.value,
+                      );
+                      if (!organization) return;
+                      setValue('organizationName', organization.name, { shouldValidate: true });
+                      setValue('organizationInn', organization.inn, { shouldValidate: true });
+                      setValue('organizationKpp', organization.kpp ?? '', {
+                        shouldValidate: true,
+                      });
+                    }}
+                  >
+                    <option value="">Заполнить вручную</option>
+                    {savedOrganizations.map((organization) => (
+                      <option key={organization.id} value={organization.id}>
+                        {organization.name} · ИНН {organization.inn}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
               <div className={styles.fullField}>
                 <label htmlFor="checkout-pickup-date">
                   Желаемая дата самовывоза <span className={styles.optional}>необязательно</span>

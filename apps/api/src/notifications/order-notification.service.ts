@@ -7,7 +7,7 @@ import { type Environment } from '../common/config/environment';
 import { IntegrationDispatchError } from '../outbox/retry-policy';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailTransportService } from './email-transport.service';
-import { templateForEvent } from './email-template.registry';
+import { preferenceForTemplate, templateForEvent } from './email-template.registry';
 import { OrderEmailRenderer } from './order-email-renderer';
 
 @Injectable()
@@ -35,6 +35,29 @@ export class OrderNotificationService {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new IntegrationDispatchError('NOTIFICATION_ORDER_NOT_FOUND', false);
     const idempotencyKey = `email:${event.id}:${template}`;
+    if (order.customerId) {
+      const preference = preferenceForTemplate(template);
+      if (preference) {
+        const settings = await this.prisma.notificationPreference.findUnique({
+          where: { userId: order.customerId },
+          select: {
+            orderUpdates: true,
+            paymentUpdates: true,
+            reservationReminders: true,
+          },
+        });
+        if (settings?.[preference] === false) {
+          await this.suppress(
+            idempotencyKey,
+            template,
+            order.id,
+            order.customerId,
+            order.guestEmail,
+          );
+          return;
+        }
+      }
+    }
     if (event.eventType === 'order.reservation_expiry_reminder') {
       const expectedDeadline = this.payloadString(event.payload, 'reservationExpiresAt');
       if (

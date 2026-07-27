@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AccountCoreModule } from '../account/account-core.module';
 import { OpaqueTokenService } from '../common/security/opaque-token.service';
 import { PasswordService } from '../common/security/password.service';
 import { AuthNotificationPort } from './auth-notification.port';
@@ -10,6 +11,7 @@ import { SessionCookieService } from './session-cookie.service';
 import { SmtpAuthNotificationService } from './smtp-auth-notification.service';
 
 @Module({
+  imports: [AccountCoreModule],
   controllers: [AuthController],
   providers: [
     AuthService,

@@ -103,3 +103,7 @@ export function getAuthErrorMessage(error: unknown): string {
   }
   return 'Произошла непредвиденная ошибка. Попробуйте ещё раз.';
 }
+
+export function notifyAuthChanged(): void {
+  window.dispatchEvent(new Event('pro-dessert:auth-changed'));
+}

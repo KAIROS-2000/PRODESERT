@@ -1,11 +1,14 @@
 'use client';
 
-import type { OrderCreatedView } from '@pro-dessert/contracts';
-import { CheckCircle2, Clock3, Info, MapPin, PackageSearch } from 'lucide-react';
+import { CheckCircle2, Clock3, Info, MapPin, PackageSearch, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { useSyncExternalStore } from 'react';
 
-import { parseCreatedOrderSnapshot, readLastCreatedOrderSnapshot } from '@/lib/order-session';
+import {
+  parseCreatedOrderSnapshot,
+  readLastCreatedOrderSnapshot,
+  type StoredOrderSummary,
+} from '@/lib/order-session';
 
 import styles from './order-flow.module.css';
 
@@ -15,7 +18,6 @@ const money = new Intl.NumberFormat('ru-RU', {
   maximumFractionDigits: 2,
 });
 
-type StoredOrder = Omit<OrderCreatedView, 'accessToken'>;
 const serverPendingSnapshot = '__PRO_DESSERT_SERVER_PENDING__';
 
 function subscribeToSessionOrder(): () => void {
@@ -39,7 +41,7 @@ export function OrderSuccessView() {
     );
   }
 
-  const order: StoredOrder | null = parseCreatedOrderSnapshot(snapshot);
+  const order: StoredOrderSummary | null = parseCreatedOrderSnapshot(snapshot);
 
   if (order === null) {
     return (
@@ -132,6 +134,15 @@ export function OrderSuccessView() {
             браузера. Сохраните номер заказа.
           </span>
         </div>
+        {order.guest ? (
+          <div className={styles.infoBox}>
+            <UserPlus aria-hidden="true" size={20} />
+            <span>
+              Создайте профиль с тем же email после оформления. После подтверждения адреса этот
+              заказ появится в личном кабинете.
+            </span>
+          </div>
+        ) : null}
 
         <div className={styles.actions}>
           <Link
@@ -143,6 +154,11 @@ export function OrderSuccessView() {
           <Link className="button button--secondary" href="/pickup">
             Правила самовывоза
           </Link>
+          {order.guest ? (
+            <Link className="button button--secondary" href="/register?from=order">
+              Создать профиль
+            </Link>
+          ) : null}
         </div>
       </article>
     </div>

@@ -1,6 +1,9 @@
 import { OrderStatus, type OrderCreatedView } from '@pro-dessert/contracts';
 
-type StoredOrderSummary = Omit<OrderCreatedView, 'accessToken'>;
+export type StoredOrderSummary = Omit<OrderCreatedView, 'accessToken'> & {
+  readonly guest: boolean;
+  readonly customerEmail?: string;
+};
 
 const lastOrderKey = 'pro-dessert:last-created-order';
 const orderAccessPrefix = 'pro-dessert:guest-order-access:';
@@ -17,6 +20,8 @@ function isStoredOrderSummary(value: unknown): value is StoredOrderSummary {
     typeof record.grandTotal === 'string' &&
     record.currency === 'RUB' &&
     typeof record.message === 'string' &&
+    typeof record.guest === 'boolean' &&
+    (record.customerEmail === undefined || typeof record.customerEmail === 'string') &&
     typeof record.pickup === 'object' &&
     record.pickup !== null
   );
@@ -26,8 +31,13 @@ function accessKey(publicNumber: string): string {
   return `${orderAccessPrefix}${publicNumber}`;
 }
 
-export function rememberCreatedOrder(order: OrderCreatedView): void {
-  const { accessToken, ...summary } = order;
+export function rememberCreatedOrder(order: OrderCreatedView, customerEmail?: string): void {
+  const { accessToken, ...publicSummary } = order;
+  const summary: StoredOrderSummary = {
+    ...publicSummary,
+    guest: Boolean(accessToken),
+    ...(customerEmail ? { customerEmail: customerEmail.trim() } : {}),
+  };
   volatileLastOrderSnapshot = JSON.stringify(summary);
   if (accessToken) volatileOrderAccess.set(order.publicNumber, accessToken);
 

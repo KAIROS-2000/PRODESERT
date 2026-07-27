@@ -1,6 +1,7 @@
-import { MapPin, Menu, UserRound } from 'lucide-react';
+import { MapPin, Menu } from 'lucide-react';
 import Link from 'next/link';
 
+import { AccountEntry } from '@/components/account/account-entry';
 import { CartLink } from '@/components/cart/cart-link';
 import { SearchAutocomplete } from '@/components/catalog/search-autocomplete';
 
@@ -43,10 +44,7 @@ export function SiteHeader() {
 
         <div className="header-actions">
           <CartLink />
-          <Link className="button button--quiet desktop-account" href="/login">
-            <UserRound aria-hidden="true" size={18} />
-            Войти
-          </Link>
+          <AccountEntry />
           <details className="mobile-menu">
             <summary aria-label="Открыть меню">
               <Menu aria-hidden="true" size={22} />
@@ -59,7 +57,7 @@ export function SiteHeader() {
                 </Link>
               ))}
               <CartLink mobile />
-              <Link href="/login">Войти в профиль</Link>
+              <AccountEntry mobile />
               <Link href="/register">Создать профиль</Link>
             </nav>
           </details>

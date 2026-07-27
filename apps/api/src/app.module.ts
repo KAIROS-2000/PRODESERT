@@ -3,6 +3,8 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { AuditModule } from './audit/audit.module';
+import { AccountModule } from './account/account.module';
+import { AccountOrdersModule } from './account-orders/account-orders.module';
 import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { CartModule } from './cart/cart.module';
@@ -35,6 +37,8 @@ import { ReservationsModule } from './reservations/reservations.module';
     QueueModule,
     OutboxModule,
     AuditModule,
+    AccountModule,
+    AccountOrdersModule,
     HealthModule,
     AuthModule,
     CatalogModule,

@@ -36,6 +36,9 @@ export function SiteFooter() {
               <Link href="/login">Вход</Link>
             </li>
             <li>
+              <Link href="/account">Личный кабинет</Link>
+            </li>
+            <li>
               <Link href="/register">Регистрация</Link>
             </li>
           </ul>

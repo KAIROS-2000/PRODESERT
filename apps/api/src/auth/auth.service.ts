@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, type User } from '@prisma/client';
+import { AccountService } from '../account/account.service';
 import { type Environment } from '../common/config/environment';
 import { JsonLogger } from '../common/logging/json-logger.service';
 import { type ClientMetadata } from '../common/security/client-fingerprint.service';
@@ -39,6 +40,7 @@ export class AuthService {
     private readonly notifications: AuthNotificationPort,
     private readonly config: ConfigService<Environment, true>,
     private readonly logger: JsonLogger,
+    private readonly accounts: AccountService,
   ) {}
 
   async register(
@@ -166,6 +168,11 @@ export class AuthService {
       await this.writeAudit(tx, 'AUTH_LOGIN_SUCCEEDED', user, context);
       return created;
     });
+    try {
+      await this.accounts.linkGuestOrders(user.id, user.emailNormalized, context);
+    } catch (error: unknown) {
+      this.logger.error('account_guest_order_link_failed', error);
+    }
 
     return {
       rawToken: token.raw,

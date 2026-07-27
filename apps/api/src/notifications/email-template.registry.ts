@@ -20,6 +20,25 @@ export const emailTemplateCodes = [
 
 export type EmailTemplateCode = (typeof emailTemplateCodes)[number];
 
+export type OrderNotificationPreference =
+  'orderUpdates' | 'paymentUpdates' | 'reservationReminders';
+
+const paymentTemplates = new Set<EmailTemplateCode>([
+  'PAYMENT_INSTRUCTIONS',
+  'PAYMENT_VERIFYING',
+  'PAYMENT_CONFIRMED',
+  'PAYMENT_PROOF_REJECTED',
+]);
+
+export function preferenceForTemplate(
+  template: EmailTemplateCode,
+): OrderNotificationPreference | undefined {
+  if (paymentTemplates.has(template)) return 'paymentUpdates';
+  if (template === 'RESERVATION_EXPIRY_REMINDER') return 'reservationReminders';
+  if (template === 'EMAIL_VERIFICATION' || template === 'PASSWORD_RESET') return undefined;
+  return 'orderUpdates';
+}
+
 const eventTemplateMap: Readonly<Record<string, EmailTemplateCode>> = {
   'order.created': 'ORDER_CREATED',
   'order.awaiting_stock_confirmation': 'AWAITING_STOCK_CONFIRMATION',

@@ -127,6 +127,7 @@
 
 .field input,
 .fullField input,
+.fullField select,
 .fullField textarea {
   width: 100%;
   min-height: 48px;
@@ -149,6 +150,7 @@
 
 .field input:focus,
 .fullField input:focus,
+.fullField select:focus,
 .fullField textarea:focus {
   border-color: #b55576;
   box-shadow: 0 0 0 3px rgb(181 85 118 / 12%);
