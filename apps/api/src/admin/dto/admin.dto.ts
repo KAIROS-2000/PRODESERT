@@ -38,6 +38,16 @@ export class PaginationDto {
   limit = 25;
 }
 
+export class AdminDashboardQueryDto {
+  @IsOptional()
+  @IsISO8601()
+  from?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  to?: string;
+}
+
 export class AdminOrdersQueryDto extends PaginationDto {
   @IsOptional()
   @IsString()

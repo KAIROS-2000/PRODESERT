@@ -79,7 +79,9 @@ const adminOrderListInclude = {
   customer: {
     select: { id: true, email: true, firstName: true, lastName: true, phone: true },
   },
-  payment: { select: { id: true, status: true, amount: true, version: true, proofSubmittedAt: true } },
+  payment: {
+    select: { id: true, status: true, amount: true, version: true, proofSubmittedAt: true },
+  },
   _count: { select: { items: true, stockReservations: true, internalNotes: true } },
 } satisfies Prisma.OrderInclude;
 
@@ -128,7 +130,8 @@ export function adminAllowedActions(
       status === 'PAYMENT_VERIFICATION' &&
       ['PENDING', 'PROOF_UPLOADED', 'VERIFYING', 'REJECTED'].includes(paymentStatus ?? ''),
     rejectPayment:
-      status === 'PAYMENT_VERIFICATION' && ['PROOF_UPLOADED', 'VERIFYING'].includes(paymentStatus ?? ''),
+      status === 'PAYMENT_VERIFICATION' &&
+      ['PROOF_UPLOADED', 'VERIFYING'].includes(paymentStatus ?? ''),
     extendReservation: ['AWAITING_PAYMENT', 'PAYMENT_VERIFICATION'].includes(status),
     startAssembly: targets.has('ASSEMBLING'),
     markReady: targets.has('READY_FOR_PICKUP'),
@@ -253,7 +256,12 @@ export class AdminOperationsService {
         take: query.limit,
       }),
     ]);
-    return this.page(rows.map((row) => this.toOrderSummary(row)), query.page, query.limit, total);
+    return this.page(
+      rows.map((row) => this.toOrderSummary(row)),
+      query.page,
+      query.limit,
+      total,
+    );
   }
 
   async ordersCsv(query: AdminOrdersQueryDto): Promise<string> {
@@ -263,16 +271,7 @@ export class AdminOperationsService {
       orderBy: this.orderBy(query),
       take: 10_000,
     });
-    const header = [
-      'Номер',
-      'Статус',
-      'Клиент',
-      'Email',
-      'Сумма',
-      'Оплата',
-      'Резерв до',
-      'Создан',
-    ];
+    const header = ['Номер', 'Статус', 'Клиент', 'Email', 'Сумма', 'Оплата', 'Резерв до', 'Создан'];
     const lines = rows.map((row) => [
       row.publicNumber,
       row.status,
@@ -308,7 +307,12 @@ export class AdminOperationsService {
       actorRole: principal.role,
       correlationId,
     });
-    return { id: order.id, publicNumber: order.publicNumber, status: order.status, version: order.version };
+    return {
+      id: order.id,
+      publicNumber: order.publicNumber,
+      status: order.status,
+      version: order.version,
+    };
   }
 
   async cancel(
@@ -327,7 +331,12 @@ export class AdminOperationsService {
       reason: dto.reason.trim(),
       correlationId,
     });
-    return { id: order.id, publicNumber: order.publicNumber, status: order.status, version: order.version };
+    return {
+      id: order.id,
+      publicNumber: order.publicNumber,
+      status: order.status,
+      version: order.version,
+    };
   }
 
   async addNote(
@@ -338,7 +347,10 @@ export class AdminOperationsService {
   ): Promise<Record<string, unknown>> {
     const body = dto.body.trim();
     const note = await this.prisma.$transaction(async (transaction) => {
-      const order = await transaction.order.findUnique({ where: { id: orderId }, select: { id: true } });
+      const order = await transaction.order.findUnique({
+        where: { id: orderId },
+        select: { id: true },
+      });
       if (!order) throw this.orderNotFound();
       const created = await transaction.orderInternalNote.create({
         data: { orderId, authorUserId: principal.userId, body },
@@ -390,7 +402,12 @@ export class AdminOperationsService {
         take: query.limit,
       }),
     ]);
-    return this.page(rows.map((row) => this.toPayment(row)), query.page, query.limit, total);
+    return this.page(
+      rows.map((row) => this.toPayment(row)),
+      query.page,
+      query.limit,
+      total,
+    );
   }
 
   async payment(id: string): Promise<Record<string, unknown>> {
@@ -533,7 +550,9 @@ export class AdminOperationsService {
   async syncJobs(query: AdminSyncJobsQueryDto): Promise<Record<string, unknown>> {
     const where: Prisma.SyncJobWhereInput = {
       ...(query.status ? { status: query.status } : {}),
-      ...(query.eventType ? { eventType: { contains: query.eventType.trim(), mode: 'insensitive' } } : {}),
+      ...(query.eventType
+        ? { eventType: { contains: query.eventType.trim(), mode: 'insensitive' } }
+        : {}),
     };
     const [total, rows] = await Promise.all([
       this.prisma.syncJob.count({ where }),
@@ -544,10 +563,18 @@ export class AdminOperationsService {
         take: query.limit,
       }),
     ]);
-    return this.page(rows.map((row) => this.toSyncJob(row)), query.page, query.limit, total);
+    return this.page(
+      rows.map((row) => this.toSyncJob(row)),
+      query.page,
+      query.limit,
+      total,
+    );
   }
 
-  async syncErrors(query: AdminSyncJobsQueryDto, discrepanciesOnly = false): Promise<Record<string, unknown>> {
+  async syncErrors(
+    query: AdminSyncJobsQueryDto,
+    discrepanciesOnly = false,
+  ): Promise<Record<string, unknown>> {
     const where: Prisma.SyncErrorWhereInput = {
       ...(discrepanciesOnly ? { code: { contains: 'MISMATCH', mode: 'insensitive' } } : {}),
       syncJob: {
@@ -661,7 +688,8 @@ export class AdminOperationsService {
     const reason = dto.reason.trim();
     const result = await this.prisma.$transaction(async (transaction) => {
       const job = await transaction.syncJob.findUnique({ where: { id } });
-      if (!job) throw new NotFoundException({ code: 'SYNC_JOB_NOT_FOUND', message: 'Задача не найдена.' });
+      if (!job)
+        throw new NotFoundException({ code: 'SYNC_JOB_NOT_FOUND', message: 'Задача не найдена.' });
       if (
         job.direction !== SyncDirection.INBOUND ||
         (job.status !== SyncJobStatus.DLQ && job.status !== SyncJobStatus.RETRY_SCHEDULED)
@@ -709,7 +737,11 @@ export class AdminOperationsService {
     const reason = dto.reason.trim();
     const result = await this.prisma.$transaction(async (transaction) => {
       const event = await transaction.outboxEvent.findUnique({ where: { id } });
-      if (!event) throw new NotFoundException({ code: 'OUTBOX_EVENT_NOT_FOUND', message: 'Событие не найдено.' });
+      if (!event)
+        throw new NotFoundException({
+          code: 'OUTBOX_EVENT_NOT_FOUND',
+          message: 'Событие не найдено.',
+        });
       if (event.status !== OutboxStatus.DLQ) {
         throw new ConflictException({
           code: 'OUTBOX_RETRY_NOT_ALLOWED',
@@ -1045,7 +1077,12 @@ export class AdminOperationsService {
     });
   }
 
-  private page<T>(items: readonly T[], page: number, limit: number, total: number): Record<string, unknown> {
+  private page<T>(
+    items: readonly T[],
+    page: number,
+    limit: number,
+    total: number,
+  ): Record<string, unknown> {
     return {
       items,
       page,
@@ -1060,7 +1097,9 @@ export class AdminOperationsService {
     guestSurname: string | null;
     customer?: { firstName: string | null; lastName: string | null } | null;
   }): string {
-    const registered = [record.customer?.firstName, record.customer?.lastName].filter(Boolean).join(' ');
+    const registered = [record.customer?.firstName, record.customer?.lastName]
+      .filter(Boolean)
+      .join(' ');
     return registered || [record.guestName, record.guestSurname].filter(Boolean).join(' ');
   }
 

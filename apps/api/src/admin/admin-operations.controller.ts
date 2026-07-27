@@ -24,6 +24,7 @@ import { RequestCorrelationId } from '../common/request/request-correlation-id.d
 import {
   AddInternalNoteDto,
   AdminAuditQueryDto,
+  AdminDashboardQueryDto,
   AdminOrdersQueryDto,
   AdminPaymentsQueryDto,
   AdminReservationsQueryDto,
@@ -47,8 +48,8 @@ export class AdminOperationsController {
   @Get('dashboard')
   @Header('Cache-Control', PRIVATE_CACHE)
   @Roles(Role.MANAGER, Role.ADMIN)
-  dashboard(@Query('from') from?: string, @Query('to') to?: string): Promise<Record<string, unknown>> {
-    return this.operations.dashboard(from, to);
+  dashboard(@Query() query: AdminDashboardQueryDto): Promise<Record<string, unknown>> {
+    return this.operations.dashboard(query.from, query.to);
   }
 
   @Get('orders')
@@ -156,7 +157,10 @@ export class AdminOperationsController {
     const document = await this.documents.getPrivate(id);
     await this.operations.recordPaymentDocumentDownload(id, principal, correlationId);
     response.setHeader('Content-Type', document.mimeType);
-    response.setHeader('Content-Disposition', `attachment; filename="${document.filename}"`);
+    response.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(document.filename)}`,
+    );
     response.setHeader('Content-Length', document.bytes.length.toString());
     return document.bytes;
   }

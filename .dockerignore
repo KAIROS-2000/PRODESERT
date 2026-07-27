@@ -3,6 +3,13 @@
 .next
 .turbo
 node_modules
+**/node_modules
+**/.next
+**/.turbo
+**/coverage
+**/dist
+**/tsconfig.tsbuildinfo
+**/*.tsbuildinfo
 coverage
 dist
 backups

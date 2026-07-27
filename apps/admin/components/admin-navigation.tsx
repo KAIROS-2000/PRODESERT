@@ -47,7 +47,11 @@ export function AdminNavigation({ roles }: { roles: readonly string[] }) {
             ? pathname === '/admin' || pathname === '/admin/'
             : pathname.startsWith(`/admin${item.href}`);
         return (
-          <Link className={`nav-link${active ? ' nav-link--active' : ''}`} href={item.href} key={item.href}>
+          <Link
+            className={`nav-link${active ? ' nav-link--active' : ''}`}
+            href={item.href}
+            key={item.href}
+          >
             <Icon aria-hidden size={19} />
             {item.label}
           </Link>

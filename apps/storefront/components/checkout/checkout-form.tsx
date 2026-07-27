@@ -27,6 +27,7 @@ import {
   validateCheckout,
 } from '@/lib/checkout-api';
 import { rememberCreatedOrder } from '@/lib/order-session';
+import { trackAnalyticsEvent } from '@/lib/analytics';
 
 import styles from './order-flow.module.css';
 
@@ -243,8 +244,10 @@ export function CheckoutForm() {
 
     try {
       if (!currentIdempotencyKey) {
+        trackAnalyticsEvent('begin_checkout', { itemCount: cart.itemCount, surface: 'checkout' });
         const validation = await validateCheckout(input);
         if (!validation.valid) {
+          trackAnalyticsEvent('checkout_validation_error', { source: 'server' });
           for (const fieldError of validation.fieldErrors) {
             const formField = formFieldByServerField[fieldError.field];
             if (formField) setError(formField, { type: 'server', message: fieldError.message });
@@ -268,6 +271,7 @@ export function CheckoutForm() {
       }
 
       const order = await createOrder(input, currentIdempotencyKey);
+      trackAnalyticsEvent('order_created', { itemCount: cart.itemCount, surface: 'checkout' });
       orderCreated.current = true;
       rememberCreatedOrder(order, values.email);
       try {
@@ -277,6 +281,10 @@ export function CheckoutForm() {
       }
       router.replace('/order/success');
     } catch (error) {
+      trackAnalyticsEvent('checkout_validation_error', {
+        source: 'request',
+        ...(error instanceof CheckoutApiError ? { status: error.status } : {}),
+      });
       if (error instanceof CheckoutApiError && error.status === 409) {
         await refresh();
       }

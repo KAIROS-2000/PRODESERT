@@ -73,11 +73,19 @@ export class AdminContentService {
         take: query.limit,
       }),
     ]);
-    return this.page(rows.map((product) => this.toProduct(product)), query.page, query.limit, total);
+    return this.page(
+      rows.map((product) => this.toProduct(product)),
+      query.page,
+      query.limit,
+      total,
+    );
   }
 
   async product(id: string): Promise<Record<string, unknown>> {
-    const product = await this.prisma.product.findUnique({ where: { id }, include: productInclude });
+    const product = await this.prisma.product.findUnique({
+      where: { id },
+      include: productInclude,
+    });
     if (!product) throw this.productNotFound();
     return this.toProduct(product);
   }
@@ -126,7 +134,9 @@ export class AdminContentService {
       });
     }
     const product = await this.prisma.$transaction(async (transaction) => {
-      const variantIds = [...new Set(dto.images.flatMap((image) => (image.variantId ? [image.variantId] : [])))];
+      const variantIds = [
+        ...new Set(dto.images.flatMap((image) => (image.variantId ? [image.variantId] : []))),
+      ];
       if (variantIds.length > 0) {
         const variants = await transaction.productVariant.count({
           where: { id: { in: variantIds }, productId: id },
@@ -273,7 +283,14 @@ export class AdminContentService {
           ...(dto.active !== undefined ? { active: dto.active } : {}),
         },
       });
-      await this.contentAudit(transaction, 'SEARCH_SYNONYM_CREATED', 'SearchSynonym', synonym.id, principal, correlationId);
+      await this.contentAudit(
+        transaction,
+        'SEARCH_SYNONYM_CREATED',
+        'SearchSynonym',
+        synonym.id,
+        principal,
+        correlationId,
+      );
       return synonym;
     });
     return this.toSynonym(item);
@@ -287,7 +304,11 @@ export class AdminContentService {
   ): Promise<Record<string, unknown>> {
     const item = await this.prisma.$transaction(async (transaction) => {
       const existing = await transaction.searchSynonym.findUnique({ where: { id } });
-      if (!existing) throw new NotFoundException({ code: 'SEARCH_SYNONYM_NOT_FOUND', message: 'Синоним не найден.' });
+      if (!existing)
+        throw new NotFoundException({
+          code: 'SEARCH_SYNONYM_NOT_FOUND',
+          message: 'Синоним не найден.',
+        });
       const synonym = await transaction.searchSynonym.update({
         where: { id },
         data: {
@@ -298,7 +319,14 @@ export class AdminContentService {
           ...(dto.active !== undefined ? { active: dto.active } : {}),
         },
       });
-      await this.contentAudit(transaction, 'SEARCH_SYNONYM_UPDATED', 'SearchSynonym', id, principal, correlationId);
+      await this.contentAudit(
+        transaction,
+        'SEARCH_SYNONYM_UPDATED',
+        'SearchSynonym',
+        id,
+        principal,
+        correlationId,
+      );
       return synonym;
     });
     return this.toSynonym(item);
@@ -311,8 +339,19 @@ export class AdminContentService {
   ): Promise<void> {
     await this.prisma.$transaction(async (transaction) => {
       const result = await transaction.searchSynonym.deleteMany({ where: { id } });
-      if (result.count === 0) throw new NotFoundException({ code: 'SEARCH_SYNONYM_NOT_FOUND', message: 'Синоним не найден.' });
-      await this.contentAudit(transaction, 'SEARCH_SYNONYM_DELETED', 'SearchSynonym', id, principal, correlationId);
+      if (result.count === 0)
+        throw new NotFoundException({
+          code: 'SEARCH_SYNONYM_NOT_FOUND',
+          message: 'Синоним не найден.',
+        });
+      await this.contentAudit(
+        transaction,
+        'SEARCH_SYNONYM_DELETED',
+        'SearchSynonym',
+        id,
+        principal,
+        correlationId,
+      );
     });
   }
 
@@ -361,9 +400,19 @@ export class AdminContentService {
             ? { create: dto.categoryIds.map((categoryId) => ({ categoryId })) }
             : undefined,
         },
-        include: { products: { include: { product: true } }, categories: { include: { category: true } } },
+        include: {
+          products: { include: { product: true } },
+          categories: { include: { category: true } },
+        },
       });
-      await this.contentAudit(transaction, 'PROMOTION_CREATED', 'Promotion', created.id, principal, correlationId);
+      await this.contentAudit(
+        transaction,
+        'PROMOTION_CREATED',
+        'Promotion',
+        created.id,
+        principal,
+        correlationId,
+      );
       return created;
     });
     return this.toPromotion(promotion);
@@ -378,7 +427,8 @@ export class AdminContentService {
     this.assertSchedule(dto.startsAt, dto.endsAt);
     const promotion = await this.prisma.$transaction(async (transaction) => {
       const existing = await transaction.promotion.findUnique({ where: { id } });
-      if (!existing) throw new NotFoundException({ code: 'PROMOTION_NOT_FOUND', message: 'Акция не найдена.' });
+      if (!existing)
+        throw new NotFoundException({ code: 'PROMOTION_NOT_FOUND', message: 'Акция не найдена.' });
       this.assertPromotionCommercialPermission(dto, principal.role, existing.discountManagedBySite);
       await this.assertPromotionTargets(transaction, dto.productIds, dto.categoryIds);
       const update = await transaction.promotion.updateMany({
@@ -402,10 +452,20 @@ export class AdminContentService {
           });
         }
       }
-      await this.contentAudit(transaction, 'PROMOTION_UPDATED', 'Promotion', id, principal, correlationId);
+      await this.contentAudit(
+        transaction,
+        'PROMOTION_UPDATED',
+        'Promotion',
+        id,
+        principal,
+        correlationId,
+      );
       return transaction.promotion.findUniqueOrThrow({
         where: { id },
-        include: { products: { include: { product: true } }, categories: { include: { category: true } } },
+        include: {
+          products: { include: { product: true } },
+          categories: { include: { category: true } },
+        },
       });
     });
     return this.toPromotion(promotion);
@@ -427,7 +487,14 @@ export class AdminContentService {
     this.assertSchedule(dto.startsAt, dto.endsAt);
     const banner = await this.prisma.$transaction(async (transaction) => {
       const created = await transaction.banner.create({ data: this.bannerData(dto) });
-      await this.contentAudit(transaction, 'BANNER_CREATED', 'Banner', created.id, principal, correlationId);
+      await this.contentAudit(
+        transaction,
+        'BANNER_CREATED',
+        'Banner',
+        created.id,
+        principal,
+        correlationId,
+      );
       return created;
     });
     return this.toBanner(banner);
@@ -446,7 +513,14 @@ export class AdminContentService {
         data: { ...this.bannerData(dto), version: { increment: 1 } },
       });
       if (update.count === 0) await this.throwBannerVersionError(transaction, id);
-      await this.contentAudit(transaction, 'BANNER_UPDATED', 'Banner', id, principal, correlationId);
+      await this.contentAudit(
+        transaction,
+        'BANNER_UPDATED',
+        'Banner',
+        id,
+        principal,
+        correlationId,
+      );
       return transaction.banner.findUniqueOrThrow({ where: { id } });
     });
     return this.toBanner(banner);
@@ -476,7 +550,14 @@ export class AdminContentService {
           ...(dto.published ? { publishedAt: new Date() } : {}),
         },
       });
-      await this.contentAudit(transaction, 'CONTENT_PAGE_CREATED', 'ContentPage', created.id, principal, correlationId);
+      await this.contentAudit(
+        transaction,
+        'CONTENT_PAGE_CREATED',
+        'ContentPage',
+        created.id,
+        principal,
+        correlationId,
+      );
       return created;
     });
     return this.toPage(page);
@@ -506,7 +587,14 @@ export class AdminContentService {
         },
       });
       if (update.count === 0) await this.throwPageVersionError(transaction, id);
-      await this.contentAudit(transaction, 'CONTENT_PAGE_UPDATED', 'ContentPage', id, principal, correlationId);
+      await this.contentAudit(
+        transaction,
+        'CONTENT_PAGE_UPDATED',
+        'ContentPage',
+        id,
+        principal,
+        correlationId,
+      );
       return transaction.contentPage.findUniqueOrThrow({ where: { id } });
     });
     return this.toPage(page);
@@ -514,7 +602,9 @@ export class AdminContentService {
 
   private productContentData(dto: UpdateProductContentDto): Prisma.ProductUpdateManyMutationInput {
     return {
-      ...(dto.shortDescription !== undefined ? { shortDescription: dto.shortDescription?.trim() || null } : {}),
+      ...(dto.shortDescription !== undefined
+        ? { shortDescription: dto.shortDescription?.trim() || null }
+        : {}),
       ...(dto.description !== undefined ? { description: dto.description?.trim() || null } : {}),
       ...(dto.composition !== undefined ? { composition: dto.composition?.trim() || null } : {}),
       ...(dto.application !== undefined ? { application: dto.application?.trim() || null } : {}),
@@ -523,7 +613,9 @@ export class AdminContentService {
         ? { storageDescription: dto.storageDescription?.trim() || null }
         : {}),
       ...(dto.seoTitle !== undefined ? { seoTitle: dto.seoTitle?.trim() || null } : {}),
-      ...(dto.seoDescription !== undefined ? { seoDescription: dto.seoDescription?.trim() || null } : {}),
+      ...(dto.seoDescription !== undefined
+        ? { seoDescription: dto.seoDescription?.trim() || null }
+        : {}),
       ...(dto.canonicalUrl !== undefined ? { canonicalUrl: dto.canonicalUrl?.trim() || null } : {}),
       ...(dto.isHit !== undefined ? { isHit: dto.isHit } : {}),
       ...(dto.isNew !== undefined ? { isNew: dto.isNew } : {}),
@@ -537,11 +629,15 @@ export class AdminContentService {
       ...(dto.imageUrl !== undefined ? { imageUrl: dto.imageUrl?.trim() || null } : {}),
       ...(dto.imageAlt !== undefined ? { imageAlt: dto.imageAlt?.trim() || null } : {}),
       ...(dto.linkUrl !== undefined ? { linkUrl: dto.linkUrl?.trim() || null } : {}),
-      ...(dto.startsAt !== undefined ? { startsAt: dto.startsAt ? new Date(dto.startsAt) : null } : {}),
+      ...(dto.startsAt !== undefined
+        ? { startsAt: dto.startsAt ? new Date(dto.startsAt) : null }
+        : {}),
       ...(dto.endsAt !== undefined ? { endsAt: dto.endsAt ? new Date(dto.endsAt) : null } : {}),
       ...(dto.active !== undefined ? { active: dto.active } : {}),
       ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
-      ...(dto.badgeColor !== undefined ? { badgeColor: dto.badgeColor?.toUpperCase() || null } : {}),
+      ...(dto.badgeColor !== undefined
+        ? { badgeColor: dto.badgeColor?.toUpperCase() || null }
+        : {}),
       ...(dto.textColor !== undefined ? { textColor: dto.textColor?.toUpperCase() || null } : {}),
       ...(dto.discountPercent !== undefined ? { discountPercent: dto.discountPercent } : {}),
       ...(dto.discountManagedBySite !== undefined
@@ -557,7 +653,9 @@ export class AdminContentService {
       ...(dto.imageUrl !== undefined ? { imageUrl: dto.imageUrl?.trim() || null } : {}),
       ...(dto.imageAlt !== undefined ? { imageAlt: dto.imageAlt?.trim() || null } : {}),
       ...(dto.linkUrl !== undefined ? { linkUrl: dto.linkUrl?.trim() || null } : {}),
-      ...(dto.startsAt !== undefined ? { startsAt: dto.startsAt ? new Date(dto.startsAt) : null } : {}),
+      ...(dto.startsAt !== undefined
+        ? { startsAt: dto.startsAt ? new Date(dto.startsAt) : null }
+        : {}),
       ...(dto.endsAt !== undefined ? { endsAt: dto.endsAt ? new Date(dto.endsAt) : null } : {}),
       ...(dto.active !== undefined ? { active: dto.active } : {}),
       ...(dto.priority !== undefined ? { priority: dto.priority } : {}),
@@ -614,7 +712,10 @@ export class AdminContentService {
           amount: price.amount.toFixed(2),
           currency: price.currency,
         })),
-        available: variant.stockBalances.reduce((total, balance) => total + balance.available.toNumber(), 0),
+        available: variant.stockBalances.reduce(
+          (total, balance) => total + balance.available.toNumber(),
+          0,
+        ),
       })),
       updatedAt: product.updatedAt.toISOString(),
     };
@@ -770,7 +871,8 @@ export class AdminContentService {
     if (changesCommercialFields && role !== Role.ADMIN) {
       throw new ForbiddenException({
         code: 'PROMOTION_COMMERCIAL_FIELDS_FORBIDDEN',
-        message: 'Цена и скидка акции могут изменяться только администратором после согласования с 1С.',
+        message:
+          'Цена и скидка акции могут изменяться только администратором после согласования с 1С.',
       });
     }
     if (dto.discountPercent !== undefined && dto.discountPercent !== null) {
@@ -778,7 +880,8 @@ export class AdminContentService {
       if (!managedBySite) {
         throw new BadRequestException({
           code: 'PROMOTION_DISCOUNT_OWNER_REQUIRED',
-          message: 'Для скидки необходимо подтвердить, что ценой управляет сайт по согласованию с 1С.',
+          message:
+            'Для скидки необходимо подтвердить, что ценой управляет сайт по согласованию с 1С.',
         });
       }
     }
@@ -791,7 +894,10 @@ export class AdminContentService {
   ): Promise<void> {
     const distinctProducts = [...new Set(productIds ?? [])];
     const distinctCategories = [...new Set(categoryIds ?? [])];
-    if (distinctProducts.length !== (productIds?.length ?? 0) || distinctCategories.length !== (categoryIds?.length ?? 0)) {
+    if (
+      distinctProducts.length !== (productIds?.length ?? 0) ||
+      distinctCategories.length !== (categoryIds?.length ?? 0)
+    ) {
       throw new BadRequestException({
         code: 'PROMOTION_TARGET_DUPLICATE',
         message: 'Товары и категории в акции не должны повторяться.',
@@ -848,21 +954,35 @@ export class AdminContentService {
     });
   }
 
-  private async throwProductVersionError(transaction: Prisma.TransactionClient, id: string): Promise<never> {
+  private async throwProductVersionError(
+    transaction: Prisma.TransactionClient,
+    id: string,
+  ): Promise<never> {
     const product = await transaction.product.findUnique({ where: { id }, select: { id: true } });
     if (!product) throw this.productNotFound();
     throw this.versionConflict('Контент товара уже изменён. Обновите данные.');
   }
 
-  private async throwBannerVersionError(transaction: Prisma.TransactionClient, id: string): Promise<never> {
+  private async throwBannerVersionError(
+    transaction: Prisma.TransactionClient,
+    id: string,
+  ): Promise<never> {
     const banner = await transaction.banner.findUnique({ where: { id }, select: { id: true } });
-    if (!banner) throw new NotFoundException({ code: 'BANNER_NOT_FOUND', message: 'Баннер не найден.' });
+    if (!banner)
+      throw new NotFoundException({ code: 'BANNER_NOT_FOUND', message: 'Баннер не найден.' });
     throw this.versionConflict('Баннер уже изменён. Обновите данные.');
   }
 
-  private async throwPageVersionError(transaction: Prisma.TransactionClient, id: string): Promise<never> {
+  private async throwPageVersionError(
+    transaction: Prisma.TransactionClient,
+    id: string,
+  ): Promise<never> {
     const page = await transaction.contentPage.findUnique({ where: { id }, select: { id: true } });
-    if (!page) throw new NotFoundException({ code: 'CONTENT_PAGE_NOT_FOUND', message: 'Страница не найдена.' });
+    if (!page)
+      throw new NotFoundException({
+        code: 'CONTENT_PAGE_NOT_FOUND',
+        message: 'Страница не найдена.',
+      });
     throw this.versionConflict('Страница уже изменена. Обновите данные.');
   }
 
@@ -874,7 +994,12 @@ export class AdminContentService {
     return new ConflictException({ code: 'CONTENT_VERSION_CONFLICT', message });
   }
 
-  private page<T>(items: readonly T[], page: number, limit: number, total: number): Record<string, unknown> {
+  private page<T>(
+    items: readonly T[],
+    page: number,
+    limit: number,
+    total: number,
+  ): Record<string, unknown> {
     return { items, page, limit, total, totalPages: total === 0 ? 0 : Math.ceil(total / limit) };
   }
 }

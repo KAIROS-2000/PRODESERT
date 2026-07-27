@@ -15,7 +15,7 @@ concurrency:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     services:
       postgres:
         image: postgres:16-alpine
@@ -46,6 +46,7 @@ jobs:
       SESSION_TTL_SECONDS: 1800
       CORS_ORIGINS: http://localhost:3000,http://localhost:3001
       ONE_C_ADAPTER: mock
+      SEED_STAFF_PASSWORD: ci-only-seed-password-change-before-deploy
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -53,9 +54,32 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run audit:dependencies
       - run: npm run db:generate
+      - run: npm run db:migrate
+      - run: npm run db:seed
       - run: npm run format:check
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:ci
       - run: npm run build
+      - name: Start API for integration smoke test
+        run: |
+          npm --workspace @pro-dessert/api run start:prod > "$RUNNER_TEMP/pro-dessert-api.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/pro-dessert-api.pid"
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error http://127.0.0.1:4000/api/v1/health/live; then
+              exit 0
+            fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/pro-dessert-api.log"
+          exit 1
+      - run: npm run test:integration
+      - name: Upload API log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-log
+          path: ${{ runner.temp }}/pro-dessert-api.log
+          if-no-files-found: ignore

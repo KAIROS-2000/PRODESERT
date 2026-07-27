@@ -13,9 +13,11 @@
   },
   "overrides": {
     "next": {
-      "postcss": "8.5.10"
+      "postcss": "8.5.23",
+      "sharp": "0.35.3"
     },
-    "postcss": "8.5.10"
+    "postcss": "8.5.23",
+    "sharp": "0.35.3"
   },
   "scripts": {
     "dev": "turbo dev",
@@ -24,6 +26,9 @@
     "typecheck": "turbo typecheck",
     "test": "turbo test",
     "test:ci": "turbo test -- --runInBand",
+    "test:e2e": "npm run test:e2e --workspace=@pro-dessert/storefront",
+    "test:integration": "node infrastructure/scripts/admin-integration-smoke.mjs",
+    "audit:dependencies": "npm audit --omit=dev --audit-level=critical",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:generate": "npm run prisma:generate --workspace=@pro-dessert/api",

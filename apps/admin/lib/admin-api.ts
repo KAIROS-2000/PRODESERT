@@ -36,7 +36,10 @@ export async function adminGet<T = ApiRecord>(path: string): Promise<T> {
   });
   const payload = (await response.json().catch(() => null)) as unknown;
   if (!response.ok) {
-    throw new AdminApiError(messageFromPayload(payload, 'Не удалось загрузить данные.'), response.status);
+    throw new AdminApiError(
+      messageFromPayload(payload, 'Не удалось загрузить данные.'),
+      response.status,
+    );
   }
   return payload as T;
 }

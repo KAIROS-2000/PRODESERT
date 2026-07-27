@@ -59,4 +59,6 @@ npm run test
 npm run build
 ```
 
+Для полного локального качества используйте также `npm run test:integration` (после запуска API с seed-данными) и `npm run test:e2e` (после `npx playwright install chromium`). Подробные сценарии находятся в [`docs/testing.md`](./docs/testing.md), а staging/production runbook — в [`docs/deployment.md`](./docs/deployment.md).
+
 Архитектура, ER-модель, владение данными и контракт 1С находятся в [`docs`](./docs/architecture.md). Фактическая готовность функций отслеживается по этапам 1–8 мастер-плана; наличие файла или экрана само по себе не означает готовность production.

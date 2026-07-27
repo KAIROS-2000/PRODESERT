@@ -1,16 +1,24 @@
 FROM node:22-alpine AS dependencies
 ARG APP_NAME
 WORKDIR /workspace
+RUN corepack disable yarn
 COPY package.json package-lock.json* ./
 COPY apps/${APP_NAME}/package.json apps/${APP_NAME}/package.json
 COPY packages ./packages
-RUN npm install --workspace=@pro-dessert/${APP_NAME} --include-workspace-root
+RUN for attempt in 1 2 3; do npm ci --workspace=@pro-dessert/${APP_NAME} --include-workspace-root && exit 0; test "$attempt" = 3 && exit 1; sleep 5; done
 
 FROM dependencies AS builder
 ARG APP_NAME
-ENV NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_PUBLIC_ANALYTICS_ENABLED=false
+ARG NEXT_PUBLIC_ANALYTICS_ENDPOINT=
+ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    NEXT_PUBLIC_ANALYTICS_ENABLED=$NEXT_PUBLIC_ANALYTICS_ENABLED \
+    NEXT_PUBLIC_ANALYTICS_ENDPOINT=$NEXT_PUBLIC_ANALYTICS_ENDPOINT \
+    NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 COPY apps/${APP_NAME} apps/${APP_NAME}
 COPY tsconfig.json turbo.json ./
+RUN npm run build --workspace=@pro-dessert/contracts
 RUN npm run build --workspace=@pro-dessert/${APP_NAME}
 
 FROM node:22-alpine AS runner

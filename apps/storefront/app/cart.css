@@ -518,7 +518,7 @@
 }
 
 .cart-item__remove {
-  min-height: 38px;
+  min-height: 44px;
 }
 
 .cart-summary {
@@ -820,7 +820,7 @@
 
   .product-card__cart .quantity-control {
     width: 100%;
-    grid-template-columns: 38px 1fr 38px;
+    grid-template-columns: 44px 1fr 44px;
   }
 
   .cart-item {

@@ -24,6 +24,7 @@ import {
   updateCartItem,
   validateCart,
 } from '@/lib/cart-api';
+import { trackAnalyticsEvent } from '@/lib/analytics';
 
 interface ToastState {
   id: number;
@@ -134,6 +135,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const view = await addCartItem({ variantId, quantity });
         setCart(view);
         const item = view.items.find((candidate) => candidate.variantId === variantId);
+        trackAnalyticsEvent('add_to_cart', { itemCount: view.itemCount, surface: 'catalog' });
         const importantNotice = view.notices[0];
         if (importantNotice) {
           showToast(importantNotice.message, 'warning', true);
@@ -167,6 +169,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         await deleteCartItem(itemId);
         const view = await getCart();
         setCart(view);
+        trackAnalyticsEvent('remove_from_cart', { itemCount: view.itemCount, surface: 'cart' });
         showToast('Товар удалён из корзины.', 'success');
         return view;
       }),

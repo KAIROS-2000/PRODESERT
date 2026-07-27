@@ -3,12 +3,13 @@ WORKDIR /workspace
 COPY package.json package-lock.json* ./
 COPY apps/api/package.json apps/api/package.json
 COPY packages ./packages
-RUN npm install --workspace=@pro-dessert/api --include-workspace-root
+RUN for attempt in 1 2 3; do npm ci --workspace=@pro-dessert/api --include-workspace-root && exit 0; test "$attempt" = 3 && exit 1; sleep 5; done
 
 FROM dependencies AS builder
 COPY apps/api ./apps/api
 COPY tsconfig.json turbo.json ./
-RUN npm run prisma:generate --workspace=@pro-dessert/api
+RUN npm run build --workspace=@pro-dessert/contracts
+RUN for attempt in 1 2 3; do npm run prisma:generate --workspace=@pro-dessert/api && exit 0; test "$attempt" = 3 && exit 1; sleep 5; done
 RUN npm run build --workspace=@pro-dessert/api
 
 FROM node:22-alpine AS runner

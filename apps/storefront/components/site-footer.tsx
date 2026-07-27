@@ -33,6 +33,12 @@ export function SiteFooter() {
               <Link href="/pickup">Самовывоз</Link>
             </li>
             <li>
+              <Link href="/promotions">Акции</Link>
+            </li>
+            <li>
+              <Link href="/returns">Возврат и обмен</Link>
+            </li>
+            <li>
               <Link href="/login">Вход</Link>
             </li>
             <li>
@@ -51,11 +57,18 @@ export function SiteFooter() {
             Липовая улица, 20
           </address>
           <p className="footer-note">Забрать заказ можно после уведомления о готовности.</p>
+          <p className="footer-note">
+            <Link href="/contacts">Контакты и самовывоз</Link>
+          </p>
         </div>
       </div>
       <div className="shell footer-bottom">
         <span>© {new Date().getFullYear()} Pro Dessert</span>
         <span>Информация о графике и контактах публикуется после подтверждения владельцем.</span>
+        <span>
+          <Link href="/legal/privacy">Обработка данных</Link> ·{' '}
+          <Link href="/legal/order-terms">Условия заказа</Link>
+        </span>
       </div>
     </footer>
   );

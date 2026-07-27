@@ -1,5 +1,17 @@
 import argon2 from 'argon2';
-import { AttributeDataType, PrismaClient, Role } from '@prisma/client';
+import {
+  AttributeDataType,
+  OrderStatus,
+  OutboxStatus,
+  PaymentStatus,
+  PrismaClient,
+  ReservationStatus,
+  Role,
+  StatusSource,
+  SyncDirection,
+  SyncErrorSeverity,
+  SyncJobStatus,
+} from '@prisma/client';
 import {
   demoBrands,
   demoCategories,
@@ -342,7 +354,12 @@ async function assignAttribute(
 async function seed(): Promise<void> {
   const staffPassword = process.env.SEED_STAFF_PASSWORD ?? 'Local-Only-Change-Me-2026!';
   const staffPasswordHash = await argon2.hash(staffPassword, { type: argon2.argon2id });
-  const staffAccounts: readonly { email: string; role: Role; firstName: string; lastName: string }[] = [
+  const staffAccounts: readonly {
+    email: string;
+    role: Role;
+    firstName: string;
+    lastName: string;
+  }[] = [
     {
       email: 'manager.local@pro-dessert.test',
       role: Role.MANAGER,
@@ -825,6 +842,394 @@ async function seed(): Promise<void> {
     });
   }
 
+  const manager = await prisma.user.findUniqueOrThrow({
+    where: { emailNormalized: 'manager.local@pro-dessert.test' },
+    select: { id: true },
+  });
+  const demoCustomer = await prisma.user.upsert({
+    where: { emailNormalized: 'customer.local@pro-dessert.test' },
+    update: {
+      email: 'customer.local@pro-dessert.test',
+      passwordHash: staffPasswordHash,
+      firstName: 'Елена',
+      lastName: 'Покупатель',
+      role: Role.CUSTOMER,
+      isActive: true,
+      emailVerifiedAt: new Date(),
+    },
+    create: {
+      email: 'customer.local@pro-dessert.test',
+      emailNormalized: 'customer.local@pro-dessert.test',
+      passwordHash: staffPasswordHash,
+      firstName: 'Елена',
+      lastName: 'Покупатель',
+      role: Role.CUSTOMER,
+      isActive: true,
+      emailVerifiedAt: new Date(),
+    },
+  });
+
+  const orderVariant = await prisma.productVariant.findFirst({
+    where: { active: true },
+    include: {
+      prices: { where: { priceType: 'RETAIL' }, orderBy: { updatedAt: 'desc' }, take: 1 },
+      product: {
+        include: {
+          brand: { select: { name: true } },
+          images: {
+            where: { published: true },
+            select: { publicUrl: true, alt: true },
+            orderBy: [{ isPrimary: 'desc' }, { sortOrder: 'asc' }],
+            take: 1,
+          },
+        },
+      },
+    },
+    orderBy: { sku: 'asc' },
+  });
+  const orderPrice = orderVariant?.prices[0];
+  if (!orderVariant || !orderPrice)
+    throw new Error('A retail variant is required for demo order seed.');
+
+  const now = new Date();
+  const demoStatuses: readonly OrderStatus[] = [
+    OrderStatus.AWAITING_STOCK_CONFIRMATION,
+    OrderStatus.AWAITING_PAYMENT,
+    OrderStatus.PAYMENT_VERIFICATION,
+    OrderStatus.PAID,
+    OrderStatus.ASSEMBLING,
+    OrderStatus.READY_FOR_PICKUP,
+    OrderStatus.COMPLETED,
+    OrderStatus.CANCELLED_BY_STORE,
+    OrderStatus.RESERVATION_EXPIRED,
+  ];
+  const statusHistory = (status: OrderStatus): readonly OrderStatus[] => {
+    const base = [OrderStatus.CREATED, OrderStatus.AWAITING_STOCK_CONFIRMATION];
+    if (status === OrderStatus.AWAITING_STOCK_CONFIRMATION) return base;
+    if (status === OrderStatus.CANCELLED_BY_STORE) return [...base, status];
+    const withReservation = [...base, OrderStatus.AWAITING_PAYMENT];
+    if (status === OrderStatus.AWAITING_PAYMENT || status === OrderStatus.RESERVATION_EXPIRED) {
+      return status === OrderStatus.AWAITING_PAYMENT
+        ? withReservation
+        : [...withReservation, status];
+    }
+    const withVerification = [...withReservation, OrderStatus.PAYMENT_VERIFICATION];
+    if (status === OrderStatus.PAYMENT_VERIFICATION) return withVerification;
+    const withPayment = [...withVerification, OrderStatus.PAID];
+    if (status === OrderStatus.PAID) return withPayment;
+    const withAssembly = [...withPayment, OrderStatus.ASSEMBLING];
+    if (status === OrderStatus.ASSEMBLING) return withAssembly;
+    const withReady = [...withAssembly, OrderStatus.READY_FOR_PICKUP];
+    return status === OrderStatus.READY_FOR_PICKUP ? withReady : [...withReady, status];
+  };
+  const statusesWithoutReservation = new Set<OrderStatus>([
+    OrderStatus.AWAITING_STOCK_CONFIRMATION,
+    OrderStatus.CANCELLED_BY_STORE,
+  ]);
+  const paidStatuses = new Set<OrderStatus>([
+    OrderStatus.PAID,
+    OrderStatus.ASSEMBLING,
+    OrderStatus.READY_FOR_PICKUP,
+    OrderStatus.COMPLETED,
+  ]);
+  const readyStatuses = new Set<OrderStatus>([OrderStatus.READY_FOR_PICKUP, OrderStatus.COMPLETED]);
+  const paymentEligibleStatuses = new Set<OrderStatus>([
+    OrderStatus.AWAITING_PAYMENT,
+    OrderStatus.PAYMENT_VERIFICATION,
+  ]);
+  const statusRequiresPayment = (status: OrderStatus): boolean =>
+    paymentEligibleStatuses.has(status) || paidStatuses.has(status);
+
+  for (const [statusIndex, status] of demoStatuses.entries()) {
+    for (const copy of [1, 2] as const) {
+      const ordinal = statusIndex * 2 + copy;
+      const publicNumber = `DEMO-${String(ordinal).padStart(4, '0')}`;
+      const createdAt = new Date(now.getTime() - ordinal * 3_600_000);
+      const hasReservation = !statusesWithoutReservation.has(status);
+      const reservationExpiresAt = hasReservation
+        ? new Date(
+            now.getTime() + (status === OrderStatus.RESERVATION_EXPIRED ? -3_600_000 : 86_400_000),
+          )
+        : null;
+      const paid = paidStatuses.has(status);
+      const initialStatus = paid ? OrderStatus.AWAITING_PAYMENT : status;
+      let order = await prisma.order.findUnique({ where: { publicNumber } });
+      if (!order) {
+        order = await prisma.order.create({
+          data: {
+            publicNumber,
+            customerId: demoCustomer.id,
+            guestEmail: `demo-order-${ordinal}@pro-dessert.test`,
+            guestPhone: `+799900${String(ordinal).padStart(4, '0')}`,
+            guestName: 'Елена',
+            guestSurname: 'Покупатель',
+            pickupLocationId: pickupLocation.id,
+            pickupLocationCode: pickupLocation.code,
+            pickupLocationName: pickupLocation.name,
+            pickupLocationAddress: pickupLocation.addressText,
+            pickupLocationTimezone: pickupLocation.timezone,
+            fulfillmentMethod: 'PICKUP',
+            paymentMethod: 'BANK_TRANSFER',
+            subtotal: orderPrice.amount,
+            discountTotal: 0,
+            grandTotal: orderPrice.amount,
+            status: initialStatus,
+            privacyConsentAt: createdAt,
+            orderTermsConsentAt: createdAt,
+            reservationExpiresAt,
+            idempotencyScopeHash: String(ordinal).padStart(64, '0'),
+            idempotencyKey: `seed-order-${ordinal}`,
+            idempotencyRequestHash: String(ordinal + 100).padStart(64, '0'),
+            source: 'SEED',
+            stockConfirmedAt: hasReservation ? createdAt : null,
+            paidAt: null,
+            readyForPickupAt: null,
+            completedAt: null,
+            cancelledAt: null,
+            createdAt,
+            items: {
+              create: {
+                productId: orderVariant.product.id,
+                variantId: orderVariant.id,
+                oneCProductId: orderVariant.product.oneCId,
+                oneCVariantId: orderVariant.oneCId,
+                sku: orderVariant.sku,
+                productName: orderVariant.product.baseName,
+                brandName: orderVariant.product.brand?.name ?? null,
+                offerName: orderVariant.offerName,
+                packDescription: orderVariant.packDescription,
+                unit: orderVariant.unit,
+                unitPrice: orderPrice.amount,
+                oldUnitPrice: orderPrice.oldAmount,
+                unitDiscount: 0,
+                vatRate: orderVariant.vatRate,
+                quantity: 1,
+                lineSubtotal: orderPrice.amount,
+                lineDiscount: 0,
+                lineTotal: orderPrice.amount,
+                imageUrl: orderVariant.product.images[0]?.publicUrl ?? null,
+                imageAlt: orderVariant.product.images[0]?.alt ?? null,
+              },
+            },
+          },
+        });
+      }
+
+      const expectedReservationExpiry = order.reservationExpiresAt ?? reservationExpiresAt;
+      const orderItem = await prisma.orderItem.findFirstOrThrow({
+        where: { orderId: order.id },
+        select: { id: true },
+      });
+      let reservation = await prisma.stockReservation.findFirst({
+        where: { orderId: order.id, externalReservationId: `SEED-RESERVE-${ordinal}` },
+        select: { id: true, status: true, expiresAt: true },
+      });
+      if (hasReservation && !reservation) {
+        const reservationStatus =
+          status === OrderStatus.RESERVATION_EXPIRED
+            ? ReservationStatus.EXPIRED
+            : ReservationStatus.ACTIVE;
+        reservation = await prisma.stockReservation.create({
+          data: {
+            orderId: order.id,
+            orderItemId: orderItem.id,
+            variantId: orderVariant.id,
+            warehouseId: warehouse.id,
+            quantity: 1,
+            status: reservationStatus,
+            externalReservationId: `SEED-RESERVE-${ordinal}`,
+            sourceVersion: 'seed-demo-v1',
+            expiresAt: expectedReservationExpiry ?? now,
+            ...(reservationStatus === ReservationStatus.EXPIRED ? { releasedAt: createdAt } : {}),
+            source: StatusSource.ADMIN,
+            correlationId: `seed-order-${ordinal}`,
+          },
+          select: { id: true, status: true, expiresAt: true },
+        });
+      }
+      if (
+        reservation?.status === ReservationStatus.ACTIVE &&
+        expectedReservationExpiry &&
+        reservation.expiresAt.getTime() < expectedReservationExpiry.getTime()
+      ) {
+        reservation = await prisma.stockReservation.update({
+          where: { id: reservation.id },
+          data: { expiresAt: expectedReservationExpiry },
+          select: { id: true, status: true, expiresAt: true },
+        });
+      }
+
+      if (statusRequiresPayment(status)) {
+        let payment = await prisma.payment.findUnique({ where: { orderId: order.id } });
+        if (!payment) {
+          payment = await prisma.payment.create({
+            data: {
+              orderId: order.id,
+              status: PaymentStatus.PENDING,
+              amount: orderPrice.amount,
+              recipientName: 'ДЕМОНСТРАЦИОННЫЕ ДАННЫЕ — НЕ ДЛЯ ОПЛАТЫ',
+              recipientInn: '0000000000',
+              recipientKpp: '000000000',
+              settlementAccount: '00000000000000000000',
+              correspondentAccount: '00000000000000000000',
+              bik: '000000000',
+              bankName: 'Демонстрационный банк',
+              paymentPurpose: `Оплата заказа ${publicNumber}`,
+              detailsVersion: 'seed-demo-v1',
+              isDemo: true,
+              detailsPublishedAt: createdAt,
+              paymentReference: null,
+              proofSubmittedAt: null,
+              confirmedAt: null,
+              verifiedByUserId: null,
+              verificationSource: null,
+            },
+          });
+        }
+
+        if (
+          status === OrderStatus.PAYMENT_VERIFICATION &&
+          payment.status === PaymentStatus.PENDING
+        ) {
+          payment = await prisma.payment.update({
+            where: { id: payment.id },
+            data: {
+              status: PaymentStatus.PROOF_UPLOADED,
+              paymentReference: `DEMO-PAYMENT-${ordinal}`,
+              proofSubmittedAt: createdAt,
+              version: { increment: 1 },
+            },
+          });
+        }
+        if (
+          paid &&
+          payment.status !== PaymentStatus.CONFIRMED &&
+          payment.status !== PaymentStatus.REFUNDED
+        ) {
+          payment = await prisma.payment.update({
+            where: { id: payment.id },
+            data: {
+              status: PaymentStatus.CONFIRMED,
+              confirmedAt: createdAt,
+              verifiedByUserId: manager.id,
+              verificationSource: StatusSource.ADMIN,
+              version: { increment: 1 },
+            },
+          });
+        }
+      }
+
+      if (paid && order.status !== status) {
+        order = await prisma.order.update({
+          where: { id: order.id },
+          data: {
+            status,
+            paidAt: createdAt,
+            ...(readyStatuses.has(status) ? { readyForPickupAt: createdAt } : {}),
+            ...(status === OrderStatus.COMPLETED ? { completedAt: createdAt } : {}),
+          },
+        });
+      }
+      if (status === OrderStatus.COMPLETED && reservation?.status === ReservationStatus.ACTIVE) {
+        reservation = await prisma.stockReservation.update({
+          where: { id: reservation.id },
+          data: { status: ReservationStatus.CONSUMED, consumedAt: createdAt },
+          select: { id: true, status: true, expiresAt: true },
+        });
+      }
+
+      const existingHistory = await prisma.orderStatusHistory.count({
+        where: { orderId: order.id },
+      });
+      if (existingHistory === 0) {
+        for (const [historyIndex, historyStatus] of statusHistory(status).entries()) {
+          await prisma.orderStatusHistory.create({
+            data: {
+              orderId: order.id,
+              ...(historyIndex > 0 ? { fromStatus: statusHistory(status)[historyIndex - 1] } : {}),
+              toStatus: historyStatus,
+              source: historyIndex === 0 ? StatusSource.STOREFRONT : StatusSource.ADMIN,
+              ...(historyIndex > 0 ? { actorUserId: manager.id } : {}),
+              createdAt: new Date(createdAt.getTime() + historyIndex * 60_000),
+            },
+          });
+        }
+      }
+    }
+  }
+
+  const seedProductId = productIds.at(0);
+  if (!seedProductId) throw new Error('A product is required for integration demo seed.');
+
+  let integrationJob = await prisma.syncJob.findUnique({
+    where: { messageId: 'seed-stock-discrepancy-job' },
+  });
+  if (!integrationJob) {
+    integrationJob = await prisma.syncJob.create({
+      data: {
+        direction: SyncDirection.INBOUND,
+        eventType: 'catalog.stock.updated',
+        adapter: 'mock',
+        messageId: 'seed-stock-discrepancy-job',
+        externalEventId: 'seed-stock-discrepancy-event',
+        internalEntityId: seedProductId,
+        externalEntityId: uuid(1, 1),
+        entityKey: 'seed-stock-discrepancy',
+        idempotencyKey: 'seed-stock-discrepancy-v1',
+        correlationId: 'seed-stock-discrepancy',
+        schemaVersion: 'v1',
+        sourceRevision: 'seed-demo-v1',
+        payloadHash: 'a'.repeat(64),
+        payload: { scenario: 'seed_stock_discrepancy' },
+        status: SyncJobStatus.DLQ,
+        attempts: 6,
+        processedAt: now,
+      },
+    });
+  }
+  const existingSyncError = await prisma.syncError.findFirst({
+    where: { syncJobId: integrationJob.id, code: 'STOCK_DISCREPANCY' },
+    select: { id: true },
+  });
+  if (!existingSyncError) {
+    await prisma.syncError.create({
+      data: {
+        syncJobId: integrationJob.id,
+        severity: SyncErrorSeverity.ERROR,
+        code: 'STOCK_DISCREPANCY',
+        sanitizedMessage: 'Демонстрационное расхождение остатка: требуется сверка с 1С.',
+        entityType: 'ProductVariant',
+        externalEntityId: uuid(2, 1),
+        retryable: false,
+        occurredAt: now,
+      },
+    });
+  }
+  const existingOutboxEvent = await prisma.outboxEvent.findUnique({
+    where: { idempotencyKey: 'seed-outbox-dlq-v1' },
+    select: { id: true },
+  });
+  if (!existingOutboxEvent) {
+    await prisma.outboxEvent.create({
+      data: {
+        aggregateType: 'Product',
+        aggregateId: seedProductId,
+        eventType: 'catalog.stock.updated',
+        schemaVersion: 'v1',
+        payload: { scenario: 'seed_outbox_dlq' },
+        payloadHash: 'b'.repeat(64),
+        idempotencyKey: 'seed-outbox-dlq-v1',
+        correlationId: 'seed-outbox-dlq',
+        status: OutboxStatus.DLQ,
+        attempts: 6,
+        deadLetteredAt: now,
+        lastErrorCode: 'SEED_1C_TIMEOUT',
+        lastErrorMessage: 'Демонстрационный timeout 1С.',
+        lastErrorAt: now,
+      },
+    });
+  }
+
   const existingPromotion = await prisma.promotion.findFirst({
     where: { title: 'Сезон профессионального шоколада' },
     select: { id: true },
@@ -849,6 +1254,27 @@ async function seed(): Promise<void> {
     skipDuplicates: true,
   });
 
+  const completedPromotion = await prisma.promotion.findFirst({
+    where: { title: 'Завершённая демонстрационная акция' },
+    select: { id: true },
+  });
+  const completedPromotionData = {
+    title: 'Завершённая демонстрационная акция',
+    body: 'Пример автоматически завершённой акции. Витрина её не показывает.',
+    startsAt: new Date(now.getTime() - 14 * 86_400_000),
+    endsAt: new Date(now.getTime() - 86_400_000),
+    active: false,
+    priority: -10,
+  };
+  if (completedPromotion) {
+    await prisma.promotion.update({
+      where: { id: completedPromotion.id },
+      data: completedPromotionData,
+    });
+  } else {
+    await prisma.promotion.create({ data: completedPromotionData });
+  }
+
   const existingBanner = await prisma.banner.findFirst({
     where: { title: 'Профессиональный каталог для кондитеров' },
     select: { id: true },
@@ -862,7 +1288,8 @@ async function seed(): Promise<void> {
     active: true,
     priority: 10,
   };
-  if (existingBanner) await prisma.banner.update({ where: { id: existingBanner.id }, data: bannerData });
+  if (existingBanner)
+    await prisma.banner.update({ where: { id: existingBanner.id }, data: bannerData });
   else await prisma.banner.create({ data: bannerData });
 
   await prisma.contentPage.upsert({

@@ -7,8 +7,9 @@ import { SearchAutocomplete } from '@/components/catalog/search-autocomplete';
 
 const navigation = [
   { href: '/catalog', label: 'Каталог' },
+  { href: '/promotions', label: 'Акции' },
   { href: '/payment', label: 'Оплата' },
-  { href: '/#about', label: 'О магазине' },
+  { href: '/about', label: 'О магазине' },
   { href: '/pickup', label: 'Самовывоз' },
 ] as const;
 

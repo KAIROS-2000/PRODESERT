@@ -25,7 +25,7 @@ export function ProductImage({
           priority={eager}
           sizes="(max-width: 720px) 100vw, (max-width: 1100px) 50vw, 33vw"
           src={image.url}
-          unoptimized
+          unoptimized={/^https?:\/\//.test(image.url)}
         />
       ) : (
         <span className="product-image__placeholder" role="img" aria-label={productName}>

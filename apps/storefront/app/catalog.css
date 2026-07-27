@@ -59,8 +59,8 @@
   color: inherit;
 }
 .search-autocomplete form button {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
@@ -651,8 +651,8 @@
 .pagination > a,
 .pagination > span:not(.pagination__unit),
 .pagination__unit > a {
-  min-width: 40px;
-  height: 40px;
+  min-width: 44px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -730,8 +730,8 @@
   background: var(--surface);
 }
 .filter-dialog__header button {
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   display: grid;
   place-items: center;
   border: 0;

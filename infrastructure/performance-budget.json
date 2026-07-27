@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "scope": "production build on staging, mobile network profile",
+  "webVitals": {
+    "lcpMs": 2500,
+    "cls": 0.1,
+    "inpMs": 200
+  },
+  "resourceBudgets": {
+    "initialJavaScriptBytes": 450000,
+    "initialImageBytes": 350000,
+    "thirdPartyJavaScriptBytes": 0
+  },
+  "rules": [
+    "Use responsive next/image assets and lazy-load non-critical media.",
+    "Keep catalog pagination server-rendered and avoid shipping API secrets to the client.",
+    "Any third-party analytics script requires explicit consent and a documented exception."
+  ]
+}

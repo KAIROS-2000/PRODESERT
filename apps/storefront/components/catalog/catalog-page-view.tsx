@@ -10,6 +10,7 @@ import { resolveCategory } from '@/lib/catalog-categories';
 import type { CatalogBreadcrumb, CatalogQuery } from '@/lib/catalog-types';
 
 import { Breadcrumbs } from './breadcrumbs';
+import { AnalyticsEvent } from '@/components/analytics/analytics-event';
 import { CatalogErrorState } from './catalog-states';
 import { CatalogShell } from './catalog-shell';
 import { CategoryNavigation } from './category-navigation';
@@ -77,6 +78,12 @@ export async function CatalogPageView({
 
   return (
     <div className="catalog-page">
+      {isSearch ? (
+        <AnalyticsEvent
+          event={result.total === 0 ? 'search_no_results' : 'search'}
+          context={{ resultCount: result.total, source: 'results' }}
+        />
+      ) : null}
       <div className="shell">
         <Breadcrumbs items={breadcrumbs} current={title} />
         <header className="catalog-hero">

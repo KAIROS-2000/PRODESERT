@@ -6,6 +6,7 @@ import { type FormEvent, type KeyboardEvent, useEffect, useId, useRef, useState 
 import type { CatalogSearchSuggestion } from '@pro-dessert/contracts';
 
 import type { SearchSuggestion } from '@/lib/catalog-types';
+import { trackAnalyticsEvent } from '@/lib/analytics';
 
 function normalizeSuggestion(
   suggestion: CatalogSearchSuggestion & { readonly categoryPath?: string },
@@ -97,6 +98,7 @@ export function SearchAutocomplete({
     event.preventDefault();
     const normalized = query.trim();
     if (!normalized) return;
+    trackAnalyticsEvent('search', { source: compact ? 'header' : 'catalog' });
     setIsOpen(false);
     router.push(`/search?q=${encodeURIComponent(normalized)}`);
   };

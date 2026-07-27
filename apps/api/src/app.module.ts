@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { CatalogModule } from './catalog/catalog.module';
 import { CartModule } from './cart/cart.module';
 import { CheckoutModule } from './checkout/checkout.module';
+import { PublicContentModule } from './content/public-content.module';
 import { CommonModule } from './common/common.module';
 import { validateEnvironment } from './common/config/environment';
 import { RequestLoggingInterceptor } from './common/logging/request-logging.interceptor';
@@ -44,6 +45,7 @@ import { ReservationsModule } from './reservations/reservations.module';
     HealthModule,
     AuthModule,
     CatalogModule,
+    PublicContentModule,
     CartModule,
     CheckoutModule,
     ReservationsModule,

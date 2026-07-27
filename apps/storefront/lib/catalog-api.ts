@@ -18,6 +18,9 @@ import type {
 
 const API_ORIGIN = (process.env.API_INTERNAL_URL ?? 'http://localhost:4000').replace(/\/$/, '');
 const API_PREFIX = '/api/v1';
+const CATALOG_FETCH_ATTEMPTS = 2;
+const CATALOG_FETCH_RETRY_DELAY_MS = 300;
+const CATALOG_FETCH_TIMEOUT_MS = 15_000;
 
 export class CatalogApiError extends Error {
   constructor(
@@ -95,28 +98,42 @@ function normalizeSuggestion(
 }
 
 async function catalogFetch<T>(path: string, revalidate = 30): Promise<T> {
-  let response: Response;
+  for (let attempt = 0; attempt < CATALOG_FETCH_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(`${API_ORIGIN}${API_PREFIX}${path}`, {
+        headers: { Accept: 'application/json' },
+        next: { revalidate },
+        signal: AbortSignal.timeout(CATALOG_FETCH_TIMEOUT_MS),
+      });
 
-  try {
-    response = await fetch(`${API_ORIGIN}${API_PREFIX}${path}`, {
-      headers: { Accept: 'application/json' },
-      next: { revalidate },
-      signal: AbortSignal.timeout(7_000),
+      if (response.ok) {
+        return (await response.json()) as T;
+      }
+
+      if (response.status < 500 || attempt === CATALOG_FETCH_ATTEMPTS - 1) {
+        throw new CatalogApiError(
+          response.status === 404
+            ? 'Запрошенная страница каталога не найдена.'
+            : 'Не удалось загрузить каталог.',
+          response.status,
+        );
+      }
+    } catch (error) {
+      if (error instanceof CatalogApiError) {
+        throw error;
+      }
+
+      if (attempt === CATALOG_FETCH_ATTEMPTS - 1) {
+        throw new CatalogApiError('Каталог временно недоступен. Попробуйте ещё раз позже.');
+      }
+    }
+
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, CATALOG_FETCH_RETRY_DELAY_MS);
     });
-  } catch {
-    throw new CatalogApiError('Каталог временно недоступен. Попробуйте ещё раз позже.');
   }
 
-  if (!response.ok) {
-    throw new CatalogApiError(
-      response.status === 404
-        ? 'Запрошенная страница каталога не найдена.'
-        : 'Не удалось загрузить каталог.',
-      response.status,
-    );
-  }
-
-  return (await response.json()) as T;
+  throw new CatalogApiError('Каталог временно недоступен. Попробуйте ещё раз позже.');
 }
 
 function appendMany(params: URLSearchParams, key: string, values?: readonly string[]) {

@@ -10,6 +10,8 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 
+import { getBanners } from '@/lib/content-api';
+
 const benefits = [
   {
     icon: SearchCheck,
@@ -62,9 +64,31 @@ const featuredCategories = [
   },
 ] as const;
 
-export default function HomePage() {
+export default async function HomePage() {
+  const banners = await getBanners().catch(() => []);
   return (
     <>
+      {banners.length > 0 ? (
+        <section className="shell home-banner-list" aria-label="Актуальные объявления">
+          {banners.slice(0, 2).map((banner) => (
+            <Link className="home-banner" href={banner.linkUrl ?? '/catalog'} key={banner.id}>
+              {banner.imageUrl ? (
+                <Image
+                  alt={banner.imageAlt ?? banner.title}
+                  fill
+                  sizes="(max-width: 760px) 100vw, 1180px"
+                  src={banner.imageUrl}
+                  unoptimized={/^https?:\/\//.test(banner.imageUrl)}
+                />
+              ) : null}
+              <span className="home-banner__content">
+                <strong>{banner.title}</strong>
+                {banner.body ? <span>{banner.body}</span> : null}
+              </span>
+            </Link>
+          ))}
+        </section>
+      ) : null}
       <section className="hero" aria-labelledby="hero-title">
         <div className="shell hero-grid">
           <div className="hero-copy">
