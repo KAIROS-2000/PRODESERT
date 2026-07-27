@@ -27,6 +27,75 @@ const declaredMimeAliases = new Map<string, ValidatedPaymentFile['detectedMimeTy
   ['image/png', 'image/png'],
 ]);
 
+const cyrillicToLatin: Readonly<Record<string, string>> = {
+  А: 'A',
+  а: 'a',
+  Б: 'B',
+  б: 'b',
+  В: 'V',
+  в: 'v',
+  Г: 'G',
+  г: 'g',
+  Д: 'D',
+  д: 'd',
+  Е: 'E',
+  е: 'e',
+  Ё: 'Yo',
+  ё: 'yo',
+  Ж: 'Zh',
+  ж: 'zh',
+  З: 'Z',
+  з: 'z',
+  И: 'I',
+  и: 'i',
+  Й: 'Y',
+  й: 'y',
+  К: 'K',
+  к: 'k',
+  Л: 'L',
+  л: 'l',
+  М: 'M',
+  м: 'm',
+  Н: 'N',
+  н: 'n',
+  О: 'O',
+  о: 'o',
+  П: 'P',
+  п: 'p',
+  Р: 'R',
+  р: 'r',
+  С: 'S',
+  с: 's',
+  Т: 'T',
+  т: 't',
+  У: 'U',
+  у: 'u',
+  Ф: 'F',
+  ф: 'f',
+  Х: 'Kh',
+  х: 'kh',
+  Ц: 'Ts',
+  ц: 'ts',
+  Ч: 'Ch',
+  ч: 'ch',
+  Ш: 'Sh',
+  ш: 'sh',
+  Щ: 'Shch',
+  щ: 'shch',
+  Ъ: '',
+  ъ: '',
+  Ы: 'Y',
+  ы: 'y',
+  Ь: '',
+  ь: '',
+  Э: 'E',
+  э: 'e',
+  Ю: 'Yu',
+  ю: 'yu',
+  Я: 'Ya',
+  я: 'ya',
+};
+
 @Injectable()
 export class FileSignatureService {
   constructor(private readonly config: ConfigService<Environment, true>) {}
@@ -92,17 +161,22 @@ export class FileSignatureService {
   }
 
   private safeFilename(raw: string, extension: ValidatedPaymentFile['extension']): string {
-    const normalized = Array.from(basename(raw || `payment-proof.${extension}`).normalize('NFKC'))
-      .filter((character) => {
-        const code = character.charCodeAt(0);
-        return code >= 32 && code !== 127;
-      })
-      .join('');
-    const leaf = normalized
-      .replace(/[<>:"/\\|?*]/g, '_')
+    const candidate = this.recoverUtf8Filename(raw || `payment-proof.${extension}`);
+    const transliterated = Array.from(basename(candidate).normalize('NFKD'))
+      .map((character) => cyrillicToLatin[character] ?? character)
+      .join('')
+      .replace(/[\u0300-\u036f]/g, '');
+    const leaf = transliterated
+      .replace(/[^A-Za-z0-9._ -]/g, '_')
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 220);
     return leaf || `payment-proof.${extension}`;
+  }
+
+  private recoverUtf8Filename(raw: string): string {
+    if (!/[\u0080-\u009f\u00c2\u00c3\u00d0\u00d1]/.test(raw)) return raw;
+    const recovered = Buffer.from(raw, 'latin1').toString('utf8');
+    return recovered.includes('\uFFFD') ? raw : recovered;
   }
 }
